@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mongodb
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongodb:27017/revathi-enterprises
+      - JWT_SECRET=your-jwt-secret-key-here
+      - JWT_EXPIRES_IN=7d
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+  mongodb:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=revathi-enterprises
+    volumes:
+      - mongodb_data:/data/db
+
+volumes:
+  mongodb_data: 
