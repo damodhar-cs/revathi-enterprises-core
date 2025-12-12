@@ -6,17 +6,11 @@ import {
   Put,
   Param,
   Delete,
-  Query,
-  UseGuards,
-  ParseIntPipe,
-  DefaultValuePipe,
 } from "@nestjs/common";
 import { VariantsService } from "./variants.service";
 import { CreateVariantInputDto } from "./dto/create-variant.dto";
 import { UpdateVariantDto } from "./dto/update-variant.dto";
-import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
-import { ProductStatusEnum } from "./enums/variants.enum";
-import { FindAllVariantsQuery } from "./interface/variants-query.interface";
+import { SearchVariantsDto } from "./dto/search-variant.dto";
 
 @Controller("variants")
 // @UseGuards(JwtAuthGuard)
@@ -28,14 +22,9 @@ export class VariantsController {
     return this.variantsService.create(createVariantInputDto);
   }
 
-  @Get()
-  findAllVariants(@Body() input: any) {
-    return this.variantsService.findAllVariants(input);
-  }
-
-  @Get("aggregated-variants")
-  findAllAggregatedProducts(@Query() query: FindAllVariantsQuery) {
-    return this.variantsService.findAllVariants(query);
+  @Post("search")
+  search(@Body() searchDto: SearchVariantsDto) {
+    return this.variantsService.searchVariants(searchDto);
   }
 
   @Get(":uid")

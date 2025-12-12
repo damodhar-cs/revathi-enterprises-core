@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsEmail, IsNotEmpty, IsOptional, IsString, IsObject } from "class-validator";
 
 export class ExportSalesDto {
   @IsEmail()
@@ -7,14 +7,21 @@ export class ExportSalesDto {
 
   @IsOptional()
   @IsString()
+  search?: string;
+
+  @IsOptional()
+  @IsString()
   branch?: string;
 
   @IsOptional()
   @IsString()
-  startDate?: string;
+  brand?: string;
 
   @IsOptional()
-  @IsString()
-  endDate?: string;
+  @IsObject()
+  created_at?: {
+    $gte: string;
+    $lte: string;
+  };
 }
 

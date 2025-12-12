@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { SalesRepository } from "../sales/sales.repository";
-import { VariantsRepository } from "../variants/variants.repository";
+import { SalesService } from "../sales/sales.service";
+import { VariantsService } from "../variants/variants.service";
 import { LoggerService } from "../common/logger/logger.service";
 
 export interface DashboardStats {
@@ -66,8 +66,8 @@ export interface BranchPerformance {
 export class DashboardService {
   constructor(
     private readonly loggerService: LoggerService,
-    private readonly salesRepository: SalesRepository,
-    private readonly variantsRepository: VariantsRepository
+    private readonly salesService: SalesService,
+    private readonly variantsService: VariantsService
   ) {}
 
   async getStats(): Promise<DashboardStats> {
@@ -154,14 +154,22 @@ export class DashboardService {
     startDate: Date,
     endDate: Date
   ): Promise<SalesSummary> {
-    const sales = await this.salesRepository.findByDateRange(
-      startDate,
-      endDate
-    );
+    // Use the new searchSales API with CMS date range format
+    const salesResult = await this.salesService.searchSales({
+      created_at: {
+        $gte: startDate.toISOString(),
+        $lte: endDate.toISOString(),
+      },
+    });
 
-    const revenue = sales.reduce((sum, sale) => sum + sale.selling_price, 0);
+    const sales = salesResult.items;
+
+    const revenue = sales.reduce(
+      (sum, sale) => sum + (sale.selling_price || 0),
+      0
+    );
     const profit = sales.reduce(
-      (sum, sale) => sum + (sale.selling_price - sale.cost_price),
+      (sum, sale) => sum + (sale.profit_margin || 0),
       0
     );
     const transactionCount = sales.length;
@@ -178,7 +186,7 @@ export class DashboardService {
 
   private async getInventoryStatus(): Promise<InventoryStatus> {
     const MIN_STOCK_COUNT = 5;
-    const variantsResult = await this.variantsRepository.findAll({});
+    const variantsResult = await this.variantsService.searchVariants({});
     const variants = variantsResult.items;
 
     const totalItems = variants.length;
@@ -206,10 +214,15 @@ export class DashboardService {
     endDate: Date,
     limit: number
   ): Promise<TopProduct[]> {
-    const sales = await this.salesRepository.findByDateRange(
-      startDate,
-      endDate
-    );
+    // Use the new searchSales API with CMS date range format
+    const salesResult = await this.salesService.searchSales({
+      created_at: {
+        $gte: startDate.toISOString(),
+        $lte: endDate.toISOString(),
+      },
+    });
+
+    const sales = salesResult.items;
 
     // Group by product
     const productMap = new Map<string, TopProduct>();
@@ -229,8 +242,8 @@ export class DashboardService {
 
       const product = productMap.get(key)!;
       product.salesCount += 1;
-      product.revenue += sale.selling_price;
-      product.profit += sale.selling_price - sale.cost_price;
+      product.revenue += sale.selling_price || 0;
+      product.profit += sale.profit_margin || 0;
     });
 
     // Sort by sales count and take top N
@@ -240,18 +253,26 @@ export class DashboardService {
   }
 
   private async getRecentSales(limit: number): Promise<RecentSale[]> {
-    const sales = await this.salesRepository.findRecent(limit);
+    const salesResult = await this.salesService.searchSales({});
+
+    // Sort by created_at descending and take the specified limit
+    const sales = salesResult.items
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+      .slice(0, limit);
 
     return sales.map((sale) => ({
-      _id: sale._id.toString(),
-      product_name: sale.product_name,
-      sku: sale.sku,
-      brand: sale.brand,
+      _id: sale.uid || sale._id?.toString() || "",
+      product_name: sale.product_name || "",
+      sku: sale.sku || "",
+      brand: sale.brand || "",
       customer: sale.customer,
-      selling_price: sale.selling_price,
-      profit: sale.selling_price - sale.cost_price,
-      createdAt: sale.created_at,
-      branch: sale.branch,
+      selling_price: sale.selling_price || 0,
+      profit: sale.profit_margin || 0,
+      createdAt: new Date(sale.created_at),
+      branch: sale.branch || "",
     }));
   }
 
@@ -259,10 +280,14 @@ export class DashboardService {
     startDate: Date,
     endDate: Date
   ): Promise<BranchPerformance[]> {
-    const sales = await this.salesRepository.findByDateRange(
-      startDate,
-      endDate
-    );
+    const salesResult = await this.salesService.searchSales({
+      created_at: {
+        $gte: startDate.toISOString(),
+        $lte: endDate.toISOString(),
+      },
+    });
+
+    const sales = salesResult.items;
 
     // Group by branch
     const branchMap = new Map<string, BranchPerformance>();
@@ -279,8 +304,8 @@ export class DashboardService {
       }
 
       const branch = branchMap.get(sale.branch)!;
-      branch.revenue += sale.selling_price;
-      branch.profit += sale.selling_price - sale.cost_price;
+      branch.revenue += sale.selling_price || 0;
+      branch.profit += sale.profit_margin || 0;
       branch.transactionCount += 1;
     });
 

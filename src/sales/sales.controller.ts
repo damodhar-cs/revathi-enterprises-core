@@ -4,17 +4,16 @@ import {
   Post,
   Body,
   Param,
-  Query,
   HttpStatus,
   HttpCode,
   Res,
-  StreamableFile,
 } from "@nestjs/common";
 import { Response } from "express";
 import { SalesService } from "./sales.service";
 import { LoggerService } from "../common/logger/logger.service";
 import { CreateSaleInputDto } from "./dto/create-sale.dto";
 import { ExportSalesDto } from "./dto/export-sales.dto";
+import { SearchSalesDto } from "./dto/search-sales.dto";
 
 @Controller("sales")
 // @UseGuards(JwtAuthGuard) // Uncomment when authentication is needed
@@ -30,50 +29,14 @@ export class SalesController {
     return this.salesService.create(createSaleInputDto);
   }
 
-  @Get()
-  findAllSales(
-    @Query("branch") branch?: string,
-    @Query("startDate") startDate?: string,
-    @Query("endDate") endDate?: string
-  ) {
-    const filters: any = {};
-
-    if (branch) {
-      filters.branch = branch;
-    }
-
-    if (startDate) {
-      filters.startDate = new Date(startDate);
-    }
-
-    if (endDate) {
-      filters.endDate = new Date(endDate);
-    }
-
-    return this.salesService.findAll(filters);
+  @Post("search")
+  search(@Body() searchDto: SearchSalesDto) {
+    return this.salesService.searchSales(searchDto);
   }
 
-  @Get("stats")
-  getSalesStatistics(
-    @Query("branch") branch?: string,
-    @Query("startDate") startDate?: string,
-    @Query("endDate") endDate?: string
-  ) {
-    const filters: any = {};
-
-    if (branch) {
-      filters.branch = branch;
-    }
-
-    if (startDate) {
-      filters.startDate = new Date(startDate);
-    }
-
-    if (endDate) {
-      filters.endDate = new Date(endDate);
-    }
-
-    return this.salesService.getStatistics(filters);
+  @Post("stats")
+  getSalesStatistics(@Body() searchDto: SearchSalesDto) {
+    return this.salesService.getStatistics(searchDto);
   }
 
   @Post("export")
@@ -89,16 +52,20 @@ export class SalesController {
     try {
       const filters: any = {};
 
+      if (exportSalesDto.search) {
+        filters.search = exportSalesDto.search;
+      }
+
       if (exportSalesDto.branch) {
         filters.branch = exportSalesDto.branch;
       }
 
-      if (exportSalesDto.startDate) {
-        filters.startDate = new Date(exportSalesDto.startDate);
+      if (exportSalesDto.brand) {
+        filters.brand = exportSalesDto.brand;
       }
 
-      if (exportSalesDto.endDate) {
-        filters.endDate = new Date(exportSalesDto.endDate);
+      if (exportSalesDto.created_at) {
+        filters.created_at = exportSalesDto.created_at;
       }
 
       await this.salesService.exportSalesToExcel(

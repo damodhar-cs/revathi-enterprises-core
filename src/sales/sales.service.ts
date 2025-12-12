@@ -101,42 +101,51 @@ export class SalesService {
   /**
    * Find all sales with optional filtering
    */
-  async findAll(
+  async searchSales(
     filters: {
       branch?: string;
-      startDate?: Date;
-      endDate?: Date;
+      brand?: string;
       search?: string;
+      created_at?: { $gte: string; $lte: string };
     } = {}
   ): Promise<OutputDto<SaleDocument>> {
-    this.loggerService.logMethodEntry("SalesService", "findAll", filters);
-    const inputFilters: any = {};
+    this.loggerService.logMethodEntry("SalesService", "searchSales", filters);
+    const body: any = {};
+    const query: any = {};
+    
     try {
+      // Search by title (autocomplete)
       if (filters?.search) {
-        inputFilters.query = {
-          title: {
-            $regex: filters.search,
-          },
+        query.title = {
+          $regex: filters.search,
         };
       }
 
-      if (filters.startDate && filters.endDate) {
-        inputFilters.created_at = filters.startDate;
-        inputFilters.created_at = filters.endDate;
+      // Branch filter
+      if (filters.branch) {
+        query.branch = { $eq: filters.branch };
       }
 
-      if (filters.branch) {
-        inputFilters.branch = filters.branch;
+      // Brand filter
+      if (filters.brand) {
+        query.brand = { $eq: filters.brand };
       }
+
+      // Date range filter
+      if (filters.created_at) {
+        query.created_at = filters.created_at;
+      }
+
+      body.query = query;
 
       const url = this.cmsApiHelperService.getAllEntriesUrl(
         CONTENT_TYPES.SALES
       );
-      const inputPayload = { url, body: inputFilters };
+      const inputPayload = { url, body };
       return await this.cmsApiService.getAllEntries(inputPayload);
     } catch (error) {
       this.loggerService.error({
-        message: "Error while finding sales",
+        message: "Error while searching sales",
         context: "SalesService",
         error: {
           stack: error?.stack,
@@ -145,7 +154,7 @@ export class SalesService {
         metadata: filters,
       });
 
-      throw new Error(`Failed to find sales: ${error.message}`);
+      throw new Error(`Failed to search sales: ${error.message}`);
     }
   }
 
@@ -173,8 +182,9 @@ export class SalesService {
   async getStatistics(
     filters: {
       branch?: string;
-      startDate?: Date;
-      endDate?: Date;
+      brand?: string;
+      search?: string;
+      created_at?: { $gte: string; $lte: string };
     } = {}
   ): Promise<{
     totalSales: number;
@@ -182,28 +192,16 @@ export class SalesService {
     totalProfit: number;
   }> {
     try {
-      const salesData = await this.findAll(filters);
+      const salesData = await this.searchSales(filters);
       const totalSales = salesData.count;
 
-      if (filters.startDate && filters.endDate) {
-        const revenueData = await this.salesRepository.getRevenueByDateRange(
-          filters.startDate,
-          filters.endDate
-        );
-        return {
-          totalSales,
-          totalRevenue: revenueData.totalRevenue,
-          totalProfit: revenueData.totalProfit,
-        };
-      }
-
-      // Calculate manually if no date range
+      // Calculate manually from CMS data
       const totalRevenue = salesData.items.reduce(
-        (sum, sale) => sum + sale.selling_price,
+        (sum, sale) => sum + (sale.selling_price || 0),
         0
       );
       const totalProfit = salesData.items.reduce(
-        (sum, sale) => sum + sale.profit_margin,
+        (sum, sale) => sum + (sale.profit_margin || 0),
         0
       );
 
@@ -219,8 +217,9 @@ export class SalesService {
   async exportSalesToExcel(
     filters: {
       branch?: string;
-      startDate?: Date;
-      endDate?: Date;
+      brand?: string;
+      search?: string;
+      created_at?: { $gte: string; $lte: string };
     } = {},
     recipientEmail: string
   ): Promise<void> {
@@ -231,7 +230,7 @@ export class SalesService {
 
     try {
       // Fetch all sales data with the provided filters
-      const salesData = await this.findAll(filters);
+      const salesData = await this.searchSales(filters);
 
       this.loggerService.log({
         message: "Sales data fetched for export",
@@ -256,10 +255,15 @@ export class SalesService {
       // Add filter info if applied
       let filterText = "";
       if (filters.branch) filterText += `Branch: ${filters.branch} `;
-      if (filters.startDate)
-        filterText += `From: ${filters.startDate.toLocaleDateString("en-IN")} `;
-      if (filters.endDate)
-        filterText += `To: ${filters.endDate.toLocaleDateString("en-IN")}`;
+      if (filters.brand) filterText += `Brand: ${filters.brand} `;
+      if (filters.created_at) {
+        if (filters.created_at.$gte) {
+          filterText += `From: ${new Date(filters.created_at.$gte).toLocaleDateString("en-IN")} `;
+        }
+        if (filters.created_at.$lte) {
+          filterText += `To: ${new Date(filters.created_at.$lte).toLocaleDateString("en-IN")}`;
+        }
+      }
 
       if (filterText) {
         worksheet.getCell("A3").value = `Filters: ${filterText}`;

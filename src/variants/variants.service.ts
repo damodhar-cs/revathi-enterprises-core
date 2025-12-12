@@ -60,30 +60,42 @@ export class VariantsService {
     }
   }
 
-  async findAllVariants(input): Promise<OutputDto<VariantDocument>> {
-    // input filters needs to be added to request
+  async searchVariants(input): Promise<OutputDto<VariantDocument>> {
     const body: any = {};
+    const query: any = {};
+
+    // Search by title (autocomplete)
     if (input?.search) {
-      body.query = {
-        title: {
-          $regex: input.search,
-        },
+      query.title = {
+        $regex: input.search,
       };
     }
 
-    if (input.productId) {
-      input.productId = input.productId;
+    if (input.product_uid) {
+      query.product_uid = { $eq: input.product_uid };
     }
 
     // Category filter
     if (input.category) {
-      input.category = input.category;
+      query.category = { $eq: input.category };
+    }
+
+    // Brand filter
+    if (input.brand) {
+      query.brand = { $eq: input.brand };
     }
 
     // Branch filter
     if (input.branch) {
-      input.branch = input.branch;
+      query.branch = { $eq: input.branch };
     }
+
+    // Date range filter
+    if (input.created_at) {
+      query.created_at = input.created_at;
+    }
+
+    body.query = query;
 
     const url = this.cmsApiHelperService.getAllEntriesUrl(
       CONTENT_TYPES.VARIANTS

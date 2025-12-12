@@ -5,11 +5,11 @@ import {
   Post,
   Delete,
   Param,
-  Query,
   Put,
 } from "@nestjs/common";
 import { ProductsService } from "./products.service";
 import { CreateProductsInputDto } from "./dto/create-products.dto";
+import { SearchProductsDto } from "./dto/search-products.dto";
 
 @Controller("products")
 // @UseGuards(JwtAuthGuard)
@@ -21,11 +21,9 @@ export class ProductsController {
     return this.productsService.createProduct(input);
   }
 
-  @Get()
-  findAll(@Query("search") search?: string) {
-    return this.productsService.findAllProducts({
-      search,
-    });
+  @Post("search")
+  search(@Body() searchDto: SearchProductsDto) {
+    return this.productsService.searchProducts(searchDto);
   }
 
   @Get(":uid")
