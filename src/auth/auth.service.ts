@@ -1,58 +1,90 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
-import { JwtService } from "@nestjs/jwt";
-import { UsersService } from "../users/users.service";
-import * as bcrypt from "bcryptjs";
-import { LoginDto } from "./dto/login.dto";
-import { RegisterDto } from "./dto/register.dto";
+import { Injectable } from '@nestjs/common';
+import { FirebaseService } from '../firebase/firebase.service';
 
+/**
+ * Authentication Service
+ * 
+ * Handles authentication-related business logic using Firebase Admin SDK.
+ * Provides methods for password management and user operations.
+ */
 @Injectable()
 export class AuthService {
-  constructor(
-    private usersService: UsersService,
-    private jwtService: JwtService
-  ) {}
+  constructor(private readonly firebaseService: FirebaseService) {}
 
-  async validateUser(email: string, password: string): Promise<any> {
-    const user = await this.usersService.findByEmail(email);
-    if (user && (await bcrypt.compare(password, user.password))) {
-      const userObj = (user as any).toJSON();
-      const { password, ...result } = userObj;
-      return result;
+  /**
+   * Generate password reset link for user
+   * 
+   * Creates a secure password reset link that can be sent to the user's email.
+   * The link expires after a certain period (default: 1 hour).
+   * 
+   * @param email - User's email address
+   * @returns Password reset link URL
+   * @throws Error if user not found or link generation fails
+   */
+  async generatePasswordResetLink(email: string): Promise<string> {
+    try {
+      // Verify user exists before generating link
+      await this.firebaseService.getUserByEmail(email);
+
+      // Generate password reset link
+      const resetLink = await this.firebaseService.generatePasswordResetLink(email);
+
+      return resetLink;
+    } catch (error) {
+      throw new Error(`Failed to generate password reset link: ${error.message}`);
     }
-    return null;
   }
 
-  async login(loginDto: LoginDto) {
-    const user = await this.validateUser(loginDto.email, loginDto.password);
-    if (!user) {
-      throw new UnauthorizedException("Invalid credentials");
-    }
+  /**
+   * Change user password
+   * 
+   * Updates the password for an authenticated user.
+   * Requires the user's Firebase UID (obtained from verified token).
+   * 
+   * @param uid - Firebase user UID
+   * @param newPassword - New password (minimum 8 characters)
+   * @throws Error if password update fails or validation fails
+   */
+  async changePassword(uid: string, newPassword: string): Promise<void> {
+    try {
+      // Validate password strength
+      if (newPassword.length < 8) {
+        throw new Error('Password must be at least 8 characters long');
+      }
 
-    const payload = { email: user.email, sub: user._id };
-    return {
-      access_token: this.jwtService.sign(payload),
-      user: user,
-    };
+      // Update password using Firebase Admin SDK
+      await this.firebaseService.updateUserPassword(uid, newPassword);
+    } catch (error) {
+      throw new Error(`Failed to change password: ${error.message}`);
+    }
   }
 
-  async register(registerDto: RegisterDto) {
-    const user = await this.usersService.create(registerDto);
-    const userObj = (user as any).toJSON();
-    const payload = { email: userObj.email, sub: userObj._id };
+  /**
+   * Get user profile information
+   * 
+   * Retrieves detailed user information from Firebase.
+   * 
+   * @param uid - Firebase user UID
+   * @returns User record from Firebase
+   * @throws Error if user not found
+   */
+  async getUserProfile(uid: string) {
+    try {
+      const user = await this.firebaseService.getUserByUid(uid);
 
-    return {
-      access_token: this.jwtService.sign(payload),
-      user: userObj,
-    };
-  }
-
-  async getUserProfile(email: string) {
-    const user = await this.usersService.findByEmail(email);
-    if (!user) {
-      throw new UnauthorizedException("User not found");
+      // Return relevant user information
+      return {
+        uid: user.uid,
+        email: user.email,
+        email_verified: user.emailVerified,
+        display_name: user.displayName,
+        photo_url: user.photoURL,
+        disabled: user.disabled,
+        created_at: user.metadata.creationTime,
+        last_sign_in: user.metadata.lastSignInTime,
+      };
+    } catch (error) {
+      throw new Error(`Failed to retrieve user profile: ${error.message}`);
     }
-    const userObj = (user as any).toJSON();
-    const { password, ...result } = userObj;
-    return result;
   }
 }

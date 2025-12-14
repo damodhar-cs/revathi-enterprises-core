@@ -30,9 +30,9 @@ export class CreateVariantInputDto implements ICreateVariantInputDto {
   product_uid: string;
 
   @IsString()
-  @IsNotEmpty()
-  @MaxLength(1000)
-  description: string;
+  @IsOptional()
+  @MaxLength(500)
+  description?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -70,7 +70,7 @@ export class CreateVariantInputDto implements ICreateVariantInputDto {
 
   @IsOptional()
   @IsString()
-  @IsUrl({}, { message: 'Image must be a valid URL' })
+  @IsUrl({}, { message: "Image must be a valid URL" })
   image?: string;
 
   @IsNumber()

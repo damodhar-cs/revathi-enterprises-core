@@ -7,16 +7,21 @@ import {
   HttpStatus,
   HttpCode,
   Res,
+  UseGuards,
 } from "@nestjs/common";
+import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { Response } from "express";
+import { FirebaseAuthGuard } from "../auth/guards/firebase-auth.guard";
 import { SalesService } from "./sales.service";
 import { LoggerService } from "../common/logger/logger.service";
 import { CreateSaleInputDto } from "./dto/create-sale.dto";
 import { ExportSalesDto } from "./dto/export-sales.dto";
 import { SearchSalesDto } from "./dto/search-sales.dto";
 
+@ApiTags("Sales")
 @Controller("sales")
-// @UseGuards(JwtAuthGuard) // Uncomment when authentication is needed
+@UseGuards(FirebaseAuthGuard)
+@ApiBearerAuth()
 export class SalesController {
   constructor(
     private readonly salesService: SalesService,

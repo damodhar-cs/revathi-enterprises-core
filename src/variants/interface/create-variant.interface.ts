@@ -2,7 +2,7 @@ export interface ICreateVariantInputDto {
   product_name: string;
   title?: string;
   product_uid: string;
-  description: string;
+  description?: string;
   sku: string;
   category: string;
   branch: string;

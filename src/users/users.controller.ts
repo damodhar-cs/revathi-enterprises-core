@@ -8,6 +8,8 @@ import {
   Delete,
   UseGuards,
   Query,
+  Request,
+  BadRequestException,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -18,14 +20,19 @@ import {
 import { UsersService } from "./users.service";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
-import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { FirebaseAuthGuard } from "../auth/guards/firebase-auth.guard";
 import { OutputDto } from "src/common/dto/query-result";
 import { User } from "./schemas/user.schema";
 
+/**
+ * Users Controller
+ * 
+ * Protected by FirebaseAuthGuard - all endpoints require valid Firebase JWT token
+ */
 @ApiTags("Users")
 @Controller("users")
-// @UseGuards(JwtAuthGuard)
-// @ApiBearerAuth()
+@UseGuards(FirebaseAuthGuard)
+@ApiBearerAuth()
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
@@ -38,26 +45,11 @@ export class UsersController {
   }
 
   @Get("search")
-  @ApiOperation({ summary: "Search users with pagination and sorting" })
-  @ApiResponse({ status: 200, description: "Users retrieved successfully" })
-  searchUsers(
-    @Query("search") search?: string,
-    @Query("role") role?: string,
-    @Query("status") status?: string,
-    @Query("page") page?: string,
-    @Query("limit") limit?: string,
-    @Query("sortField") sortField?: string,
-    @Query("sortOrder") sortOrder?: string
-  ) {
-    return this.usersService.searchUsers({
-      search,
-      role,
-      status,
-      page: page ? parseInt(page) : 1,
-      limit: limit ? parseInt(limit) : 20,
-      sortField: sortField as "firstName" | "email" | "updatedAt",
-      sortOrder: sortOrder as "asc" | "desc",
-    });
+  @ApiOperation({ summary: "Get all users from Firebase Authentication" })
+  @ApiResponse({ status: 200, description: "Users retrieved from Firebase successfully" })
+  searchUsers(@Query("search") search?: string) {
+    // Fetch users from Firebase Authentication instead of MongoDB
+    return this.usersService.findAllFromFirebase(search);
   }
 
   @Put(":id")

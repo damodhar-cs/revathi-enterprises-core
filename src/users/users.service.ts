@@ -9,10 +9,14 @@ import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { UsersRepository } from "./users.repository";
 import { OutputDto } from "src/common/dto/query-result";
+import { FirebaseService } from "../firebase/firebase.service";
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly usersRepository: UsersRepository) {}
+  constructor(
+    private readonly usersRepository: UsersRepository,
+    private readonly firebaseService: FirebaseService
+  ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
     const existingUser = await this.usersRepository.findByEmail(
@@ -46,6 +50,46 @@ export class UsersService {
         return this.transformUsersResult(user);
       }),
     };
+  }
+
+  /**
+   * Fetch all users from Firebase Authentication
+   * Replaces MongoDB user listing with Firebase users
+   */
+  async findAllFromFirebase(search?: string): Promise<any> {
+    try {
+      const listUsersResult = await this.firebaseService.getAuth().listUsers(1000);
+      
+      let users = listUsersResult.users.map(user => ({
+        uid: user.uid,
+        email: user.email || '',
+        name: user.displayName || 'No Name',
+        emailVerified: user.emailVerified,
+        disabled: user.disabled,
+        photoURL: user.photoURL || null,
+        createdAt: user.metadata.creationTime,
+        lastSignIn: user.metadata.lastSignInTime,
+        role: 'user',
+        isActive: !user.disabled,
+      }));
+
+      // Apply search filter if provided
+      if (search && search.trim()) {
+        const searchLower = search.toLowerCase();
+        users = users.filter(user => 
+          user.email.toLowerCase().includes(searchLower) ||
+          user.name.toLowerCase().includes(searchLower) ||
+          user.uid.toLowerCase().includes(searchLower)
+        );
+      }
+
+      return {
+        items: users,
+        count: users.length,
+      };
+    } catch (error) {
+      throw new Error(`Failed to fetch users from Firebase: ${error.message}`);
+    }
   }
 
   async searchUsers(params: {

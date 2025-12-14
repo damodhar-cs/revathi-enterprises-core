@@ -1,10 +1,13 @@
 import { Controller, Get, Param, Query, UseGuards } from "@nestjs/common";
-import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { FirebaseAuthGuard } from "../auth/guards/firebase-auth.guard";
 import { CustomersService } from "./customers.service";
 import { LoggerService } from "../common/logger/logger.service";
 
+@ApiTags("Customers")
 @Controller("customers")
-@UseGuards(JwtAuthGuard)
+@UseGuards(FirebaseAuthGuard)
+@ApiBearerAuth()
 export class CustomersController {
   constructor(
     private readonly customersService: CustomersService,

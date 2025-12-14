@@ -6,14 +6,19 @@ import {
   Put,
   Param,
   Delete,
+  UseGuards,
 } from "@nestjs/common";
+import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { FirebaseAuthGuard } from "../auth/guards/firebase-auth.guard";
 import { VariantsService } from "./variants.service";
 import { CreateVariantInputDto } from "./dto/create-variant.dto";
 import { UpdateVariantDto } from "./dto/update-variant.dto";
 import { SearchVariantsDto } from "./dto/search-variant.dto";
 
+@ApiTags("Variants")
 @Controller("variants")
-// @UseGuards(JwtAuthGuard)
+@UseGuards(FirebaseAuthGuard)
+@ApiBearerAuth()
 export class VariantsController {
   constructor(private readonly variantsService: VariantsService) {}
 

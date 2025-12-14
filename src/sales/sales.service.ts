@@ -112,7 +112,7 @@ export class SalesService {
     this.loggerService.logMethodEntry("SalesService", "searchSales", filters);
     const body: any = {};
     const query: any = {};
-    
+
     try {
       // Search by title (autocomplete)
       if (filters?.search) {
@@ -273,8 +273,8 @@ export class SalesService {
       // Define columns with headers starting from row 5
       const headerRow = filterText ? 5 : 4;
       worksheet.getRow(headerRow).values = [
+        "Product title",
         "Receipt Number",
-        "Product Name",
         "SKU",
         "Category",
         "Brand",
@@ -311,8 +311,8 @@ export class SalesService {
 
       // Set column widths
       worksheet.columns = [
-        { width: 20 }, // Receipt Number
         { width: 30 }, // Product Name
+        { width: 20 }, // Receipt Number
         { width: 15 }, // SKU
         { width: 15 }, // Category
         { width: 15 }, // Brand
@@ -339,8 +339,8 @@ export class SalesService {
       // Add data rows
       salesData.items.forEach((sale) => {
         worksheet.addRow([
-          sale.receipt_number || "N/A",
           sale.title,
+          sale.receipt_number || "N/A",
           sale.sku,
           sale.category,
           sale.brand,
@@ -746,7 +746,11 @@ export class SalesService {
       doc
         .fontSize(8)
         .font("Helvetica")
-        .text("Refunds are not available for any purchases.", col1X, bottomY + 60);
+        .text(
+          "Refunds are not available for any purchases.",
+          col1X,
+          bottomY + 60
+        );
 
       // Right side - Summary
       doc.fontSize(9).font("Helvetica");
@@ -796,9 +800,9 @@ export class SalesService {
       doc
         .fontSize(10)
         .font("Helvetica-Bold")
-        .text("Thank you for doing business with us.", 50, bottomY + 115, { 
+        .text("Thank you for doing business with us.", 50, bottomY + 115, {
           align: "center",
-          width: 500
+          width: 500,
         });
 
       doc

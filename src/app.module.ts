@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { MongooseModule } from "@nestjs/mongoose";
+import { FirebaseModule } from "./firebase/firebase.module";
 import { AuthModule } from "./auth/auth.module";
 import { UsersModule } from "./users/users.module";
 import { VariantsModule } from "./variants/variants.module";
@@ -22,6 +23,7 @@ import {
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    FirebaseModule,
     LoggerModule,
     MongooseModule.forRoot(process.env.MONGODB_PRODUCTS_URI, {
       connectionName: PRODUCTS_DATABASE,

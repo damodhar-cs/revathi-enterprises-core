@@ -37,6 +37,9 @@ export class VariantsService {
   async create(input: CreateVariantInputDto): Promise<VariantDocument> {
     try {
       const { product_name, product_uid } = input;
+      if (!input?.quantity) {
+        input.quantity = 1;
+      }
 
       await this.productsService.findOne(product_uid);
 

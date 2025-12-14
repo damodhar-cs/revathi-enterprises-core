@@ -6,13 +6,19 @@ import {
   Delete,
   Param,
   Put,
+  UseGuards,
 } from "@nestjs/common";
+import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { FirebaseAuthGuard } from "../auth/guards/firebase-auth.guard";
 import { ProductsService } from "./products.service";
 import { CreateProductsInputDto } from "./dto/create-products.dto";
 import { SearchProductsDto } from "./dto/search-products.dto";
 
+@ApiTags("Products")
+
 @Controller("products")
-// @UseGuards(JwtAuthGuard)
+@UseGuards(FirebaseAuthGuard)
+@ApiBearerAuth()
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
