@@ -35,9 +35,9 @@ export class CreateVariantInputDto implements ICreateVariantInputDto {
   description?: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @MaxLength(100)
-  sku: string;
+  imei?: string;
 
   @IsString()
   @IsNotEmpty()

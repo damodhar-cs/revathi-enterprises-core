@@ -148,7 +148,7 @@ export class CMSApiService {
       return response?.data;
     } catch (error) {
       this.loggerService.error({
-        message: "Error while using create api from cs",
+        message: "Error while using update api from cs",
         context: "CMSApiService",
         error: {
           message: error?.response?.data,
@@ -172,7 +172,7 @@ export class CMSApiService {
         branch: this.configService.get("BRANCH"),
         "content-type": "application/json",
       };
-
+      console.log(url, "deletion url");
       const response = await firstValueFrom(
         this.http.delete(url, { headers, params: queryParams })
       );
@@ -180,7 +180,7 @@ export class CMSApiService {
       return response?.data;
     } catch (error) {
       this.loggerService.error({
-        message: "Error while using create api from cs",
+        message: "Error while using delete api from cs",
         context: "CMSApiService",
         error: {
           message: error?.response?.data,

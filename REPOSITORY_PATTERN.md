@@ -91,8 +91,8 @@ export class VariantsRepository
     super(productModel);
   }
 
-  async findBySku(sku: string): Promise<VariantDocument | null> {
-    return await this.findOne({ sku });
+  async findBySku(imei: string): Promise<VariantDocument | null> {
+    return await this.findOne({ imei });
   }
 
   // ... other implementations

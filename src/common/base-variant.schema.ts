@@ -21,8 +21,8 @@ export class BaseVariant extends BaseSchema {
   @Prop({ required: true, trim: true })
   description?: string;
 
-  @Prop({ required: true, unique: true, trim: true })
-  sku: string;
+  @Prop({ unique: true, trim: true })
+  imei?: string;
 
   @Prop({
     required: true,

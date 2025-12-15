@@ -3,7 +3,7 @@ export interface ICreateVariantInputDto {
   title?: string;
   product_uid: string;
   description?: string;
-  sku: string;
+  imei?: string;
   category: string;
   branch: string;
   brand: string;

@@ -1,4 +1,10 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, IsObject } from "class-validator";
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsObject,
+} from "class-validator";
 
 export class ExportSalesDto {
   @IsEmail()
@@ -24,4 +30,3 @@ export class ExportSalesDto {
     $lte: string;
   };
 }
-

@@ -42,7 +42,7 @@ export interface TopProduct {
 export interface RecentSale {
   _id: string;
   product_name: string;
-  sku: string;
+  imei: string;
   brand: string;
   customer: {
     name: string;
@@ -266,7 +266,7 @@ export class DashboardService {
     return sales.map((sale) => ({
       _id: sale.uid || sale._id?.toString() || "",
       product_name: sale.product_name || "",
-      sku: sale.sku || "",
+      imei: sale.imei || "",
       brand: sale.brand || "",
       customer: sale.customer,
       selling_price: sale.selling_price || 0,

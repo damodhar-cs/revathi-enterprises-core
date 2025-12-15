@@ -93,10 +93,98 @@ export class AuthController {
       const resetLink =
         await this.authService.generatePasswordResetLink(userEmail);
 
+      // Create email template with Firebase reset link
+      const emailTemplate = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Password Reset - Revathi Enterprises</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+    <h1 style="color: white; margin: 0; font-size: 28px;">Revathi Enterprises</h1>
+    <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Password Reset Request</p>
+  </div>
+  
+  <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
+    <p style="margin-bottom: 20px;">Hello,</p>
+    
+    <p style="margin-bottom: 20px;">We received a request to reset your password for your Revathi Enterprises account associated with <strong>${userEmail}</strong>.</p>
+    
+    <p style="margin-bottom: 25px;">Click the button below to reset your password:</p>
+    
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${resetLink}" 
+         style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                color: white; 
+                padding: 14px 40px; 
+                text-decoration: none; 
+                border-radius: 8px; 
+                font-weight: bold; 
+                font-size: 16px;
+                display: inline-block;
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+        Reset Password
+      </a>
+    </div>
+    
+    <p style="margin-bottom: 15px; font-size: 14px; color: #6b7280;">If the button doesn't work, copy and paste this link into your browser:</p>
+    <p style="background: #e5e7eb; padding: 12px; border-radius: 6px; word-break: break-all; font-size: 13px; color: #4b5563;">
+      ${resetLink}
+    </p>
+    
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+      <p style="font-size: 13px; color: #9ca3af; margin: 0;">
+        <strong>Note:</strong> This link will expire in 1 hour for security reasons.
+      </p>
+      <p style="font-size: 13px; color: #9ca3af; margin: 10px 0 0 0;">
+        If you didn't request a password reset, please ignore this email or contact support if you have concerns.
+      </p>
+    </div>
+  </div>
+  
+  <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
+    <p style="margin: 0;">© ${new Date().getFullYear()} Revathi Enterprises. All rights reserved.</p>
+    <p style="margin: 5px 0 0 0;">This is an automated message, please do not reply.</p>
+  </div>
+</body>
+</html>
+      `.trim();
+
+      // Trigger Contentstack webhook to send email
+      const webhookUrl = process.env.RESET_PASSWORD_WEBHOOK_URL;
+
+      try {
+        const response = await fetch(webhookUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            template: emailTemplate,
+            to: userEmail,
+            subject: "Password Reset - Revathi Enterprises",
+          }),
+        });
+
+        if (!response.ok) {
+          console.error(
+            "Webhook response not OK:",
+            response.status,
+            await response.text()
+          );
+        }
+      } catch (webhookError) {
+        // Log webhook error but don't fail the request
+        console.error("Failed to trigger email webhook:", webhookError);
+      }
+
       return {
-        message: "Password reset link generated successfully",
+        message: "Password reset email sent successfully",
         email: userEmail,
-        resetLink, // Return link for UI display
+        resetLink, // Return link for UI display as backup
       };
     } catch (error) {
       return {

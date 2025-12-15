@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document } from "mongoose";
 import { BaseSchema } from "../../common/base.schema";
-import { PAYMENT_METHOD_ENUM, PRODUCT_BRANCH_ENUM } from "../../common/enums";
+import { PAYMENT_METHOD_ENUM, PRODUCT_BRANCH_ENUM, FINANCE_PROVIDER_ENUM } from "../../common/enums";
 import { ISale, ICustomerInfo } from "../interface/sale.interface";
 import { PRODUCT_TYPE_ENUM } from "../../common/enums/products.enum";
 import { PRODUCT_BRAND_ENUM } from "../../common/enums/stores.enum";
@@ -47,7 +47,7 @@ export class Sale extends BaseSchema implements ISale {
   title: string; // Denormalized for easy access // mapped to productTitle in cms
 
   @Prop({ required: true, trim: true })
-  sku: string; // Denormalized for easy access
+  imei: string; // Denormalized for easy access
 
   @Prop({ required: true, enum: PRODUCT_TYPE_ENUM })
   category: PRODUCT_TYPE_ENUM; // Denormalized for easy access
@@ -71,7 +71,13 @@ export class Sale extends BaseSchema implements ISale {
   customer: CustomerInfo;
 
   @Prop({ enum: PAYMENT_METHOD_ENUM })
-  payment_method?: PAYMENT_METHOD_ENUM; // Cash, Card, UPI, etc.
+  payment_method?: PAYMENT_METHOD_ENUM; // Cash, Card, UPI, Finance, etc.
+
+  @Prop({ enum: FINANCE_PROVIDER_ENUM })
+  finance_provider?: FINANCE_PROVIDER_ENUM; // Finance provider (if payment_method is Finance)
+
+  @Prop({ min: 1 })
+  emi_duration?: number; // EMI duration in months (if payment_method is Finance)
 
   @Prop({ trim: true, unique: true, sparse: true })
   receipt_number?: string; // Generated receipt number

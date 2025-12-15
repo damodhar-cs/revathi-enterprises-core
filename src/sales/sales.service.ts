@@ -16,7 +16,6 @@ import { VariantsService } from "src/variants/variants.service";
 import { CMSApiService } from "src/common/contentstack/cms-api.service";
 import { CMSApiHelperService } from "src/common/contentstack/cms-api-helper.service";
 import { CONTENT_TYPES } from "src/common/constants/app.constants";
-import { filter } from "rxjs";
 
 @Injectable()
 export class SalesService {
@@ -45,28 +44,35 @@ export class SalesService {
       const { variant_uid } = input;
 
       // Fetch variant details to enrich the sale data
-      const variant = await this.variantsService.findOneVariant(variant_uid);
-
-      if (!variant) {
+      const existingVariant =
+        await this.variantsService.findOneVariant(variant_uid);
+      if (!existingVariant) {
         throw new NotFoundException(`Variant with ID ${variant_uid} not found`);
       }
 
       // Calculate profit margin
-      const profit_margin = input.selling_price - variant.cost_price;
+      const profit_margin = input.selling_price - existingVariant.cost_price;
 
       // Enrich sale data with variant information
+      // Use IMEI from input if provided, otherwise from variant
+      const saleImei = input.imei || existingVariant.imei;
+
+      if (!saleImei) {
+        throw new Error(`IMEI is required for sale`);
+      }
+
       const enrichedSaleData = {
         ...input,
-        product_name: variant.product_name,
-        title: variant.title || variant.product_name, // Product title for CMS
-        sku: variant.sku,
-        category: variant.category,
-        brand: variant.brand,
-        branch: variant.branch,
-        cost_price: variant.cost_price,
+        product_name: existingVariant.product_name,
+        title: existingVariant.title || existingVariant.product_name, // Product title for CMS
+        imei: saleImei,
+        category: existingVariant.category,
+        brand: existingVariant.brand,
+        branch: existingVariant.branch,
+        cost_price: existingVariant.cost_price,
         profit_margin,
-        ram: variant.attributes?.ram,
-        storage: variant.attributes?.storage,
+        ram: existingVariant.attributes?.ram,
+        storage: existingVariant.attributes?.storage,
       };
       console.log(JSON.stringify(enrichedSaleData, null, 3), "enriched data");
 
@@ -80,14 +86,31 @@ export class SalesService {
       const result = await this.cmsApiService.createEntry(inputPayload);
 
       // delete entry variant
-      const variantDeletionUrl = this.cmsApiHelperService.deleteOneEntryUrl(
-        CONTENT_TYPES.VARIANTS,
-        variant_uid
-      );
-      const variantDeletionInput = {
-        url: variantDeletionUrl,
-      };
-      await this.cmsApiService.deleteEntry(variantDeletionInput);
+
+      if (existingVariant?.quantity > 1) {
+        const variantUpdationUrl = this.cmsApiHelperService.updateOneEntryUrl(
+          CONTENT_TYPES.VARIANTS,
+          variant_uid
+        );
+        const variantUpdationInput = {
+          url: variantUpdationUrl,
+          data: {
+            entry: {
+              quantity: existingVariant?.quantity - 1,
+            },
+          },
+        };
+        await this.cmsApiService.updateEntry(variantUpdationInput);
+      } else {
+        const variantDeletionUrl = this.cmsApiHelperService.deleteOneEntryUrl(
+          CONTENT_TYPES.VARIANTS,
+          variant_uid
+        );
+        const variantDeletionInput = {
+          url: variantDeletionUrl,
+        };
+        await this.cmsApiService.deleteEntry(variantDeletionInput);
+      }
 
       return result;
     } catch (error) {
@@ -341,7 +364,7 @@ export class SalesService {
         worksheet.addRow([
           sale.title,
           sale.receipt_number || "N/A",
-          sale.sku,
+          sale.imei,
           sale.category,
           sale.brand,
           sale.branch,
@@ -577,6 +600,9 @@ export class SalesService {
       const doc = new PDFDocument({ size: "A4", margin: 50 });
       const chunks: Buffer[] = [];
 
+      // Define rupee symbol - using String.fromCharCode for better compatibility
+      const rupeeSymbol = String.fromCharCode(8377); // ₹ symbol
+
       doc.on("data", (chunk: Buffer) => chunks.push(chunk));
 
       // --- HEADER SECTION ---
@@ -695,16 +721,16 @@ export class SalesService {
       const rowTop = tableTop + 25;
       doc.fillColor("#000000").fontSize(8).font("Helvetica");
 
-      const itemName = `${sale.title || sale.product_name || "Product"} ${sale.sku ? `IMEI NO-${sale.sku}` : ""}`;
+      const itemName = `${sale.title || sale.product_name || "Product"} ${sale.imei ? `IMEI NO-${sale.imei}` : ""}`;
 
       doc.text("1", col1X + 5, rowTop);
       doc.text(itemName, col2X + 5, rowTop, { width: 170 });
       doc.text("-", col3X + 5, rowTop);
       doc.text("1", col4X + 10, rowTop);
-      doc.text(`₹ ${subtotal.toFixed(2)}`, col5X + 5, rowTop);
-      doc.text(`₹ ${totalGST.toFixed(2)}`, col6X + 5, rowTop);
+      doc.text(`${rupeeSymbol} ${subtotal.toFixed(2)}`, col5X + 5, rowTop);
+      doc.text(`${rupeeSymbol} ${totalGST.toFixed(2)}`, col6X + 5, rowTop);
       doc.text(
-        `₹ ${sellingPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        `${rupeeSymbol} ${sellingPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         col7X + 5,
         rowTop,
         { align: "right", width: 60 }
@@ -716,9 +742,13 @@ export class SalesService {
       doc.fontSize(9).font("Helvetica-Bold");
       doc.text("Total", col2X + 5, totalRowTop + 6);
       doc.text("1", col4X + 10, totalRowTop + 6);
-      doc.text(`₹ ${totalGST.toFixed(2)}`, col6X + 5, totalRowTop + 6);
       doc.text(
-        `₹ ${sellingPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        `${rupeeSymbol} ${totalGST.toFixed(2)}`,
+        col6X + 5,
+        totalRowTop + 6
+      );
+      doc.text(
+        `${rupeeSymbol} ${sellingPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         col7X + 5,
         totalRowTop + 6,
         { align: "right", width: 60 }
@@ -729,7 +759,7 @@ export class SalesService {
       // --- BOTTOM SECTION ---
       const bottomY = totalRowTop + 40;
 
-      // Left side - Amount in words & Terms
+      // Left side - Amount in words & Payment Details
       doc
         .fontSize(9)
         .font("Helvetica-Bold")
@@ -739,35 +769,58 @@ export class SalesService {
         .font("Helvetica")
         .text(amountInWords, col1X, bottomY + 15, { width: 300 });
 
+      // Payment Details Section
       doc
         .fontSize(9)
         .font("Helvetica-Bold")
-        .text("Terms And Conditions", col1X, bottomY + 45);
+        .text("Mode of Payment", col1X, bottomY + 45);
       doc
-        .fontSize(8)
+        .fontSize(9)
         .font("Helvetica")
-        .text(
-          "Refunds are not available for any purchases.",
-          col1X,
-          bottomY + 60
-        );
+        .text(sale.payment_method || "N/A", col1X, bottomY + 60);
+
+      // Show Finance details if payment method is Finance
+      let nextYPosition = bottomY + 80; // Track next Y position
+      if (sale.payment_method === "Finance" && sale.finance_provider) {
+        doc
+          .fontSize(9)
+          .font("Helvetica-Bold")
+          .text("Finance Provider", col1X, nextYPosition);
+        doc
+          .fontSize(9)
+          .font("Helvetica")
+          .text(sale.finance_provider, col1X, nextYPosition + 15);
+
+        doc
+          .fontSize(9)
+          .font("Helvetica-Bold")
+          .text("EMI Duration", col1X, nextYPosition + 35);
+        doc
+          .fontSize(9)
+          .font("Helvetica")
+          .text(`${sale.emi_duration || 0} months`, col1X, nextYPosition + 50);
+
+        nextYPosition += 70; // Move down after finance details
+      } else {
+        nextYPosition = bottomY + 60; // Less space if no finance info
+      }
 
       // Right side - Summary
       doc.fontSize(9).font("Helvetica");
       doc.text("Sub Total", 350, bottomY, { align: "left", width: 100 });
-      doc.text(`₹ ${subtotal.toFixed(2)}`, 470, bottomY, {
+      doc.text(`${rupeeSymbol} ${subtotal.toFixed(2)}`, 470, bottomY, {
         align: "right",
         width: 80,
       });
 
       doc.text("SGST@9.0%", 350, bottomY + 18, { align: "left", width: 100 });
-      doc.text(`₹ ${sgst.toFixed(2)}`, 470, bottomY + 18, {
+      doc.text(`${rupeeSymbol} ${sgst.toFixed(2)}`, 470, bottomY + 18, {
         align: "right",
         width: 80,
       });
 
       doc.text("CGST@9.0%", 350, bottomY + 36, { align: "left", width: 100 });
-      doc.text(`₹ ${cgst.toFixed(2)}`, 470, bottomY + 36, {
+      doc.text(`${rupeeSymbol} ${cgst.toFixed(2)}`, 470, bottomY + 36, {
         align: "right",
         width: 80,
       });
@@ -777,7 +830,7 @@ export class SalesService {
       doc.fillColor("#FFFFFF").fontSize(10).font("Helvetica-Bold");
       doc.text("Total", 350, bottomY + 58, { align: "left", width: 100 });
       doc.text(
-        `₹ ${sellingPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        `${rupeeSymbol} ${sellingPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         470,
         bottomY + 58,
         { align: "right", width: 80 }
@@ -786,35 +839,37 @@ export class SalesService {
       doc.fillColor("#000000").fontSize(9).font("Helvetica");
       doc.text("Received", 350, bottomY + 78, { align: "left", width: 100 });
       doc.text(
-        `₹ ${sellingPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        `${rupeeSymbol} ${sellingPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         470,
         bottomY + 78,
         { align: "right", width: 80 }
       );
 
       doc.text("Balance", 350, bottomY + 96, { align: "left", width: 100 });
-      doc.text("₹ 0.00", 470, bottomY + 96, { align: "right", width: 80 });
+      doc.text(`${rupeeSymbol} 0.00`, 470, bottomY + 96, {
+        align: "right",
+        width: 80,
+      });
 
       // --- FOOTER ---
-      // Thank you message (bold)
+      // Calculate Y position that clears both left and right side content
+      // Right side ends at bottomY + 96 (Balance), left side at nextYPosition
+      const thankYouPosition = Math.max(nextYPosition + 20, bottomY + 115);
+
+      // Thank you message (bold) - positioned below all payment details
       doc
         .fontSize(10)
         .font("Helvetica-Bold")
-        .text("Thank you for doing business with us.", 50, bottomY + 115, {
+        .text("Thank you for doing business with us.", 50, thankYouPosition, {
           align: "center",
           width: 500,
         });
 
-      doc
-        .fontSize(10)
-        .font("Helvetica")
-        .text("For: Revathi Enterprises", 50, bottomY + 140);
-
-      // Signature placeholder
+      // Signature placeholder - below thank you message
       doc
         .fontSize(9)
         .font("Helvetica")
-        .text("Authorized Signatory", 420, bottomY + 170);
+        .text("Authorized Signatory", 420, thankYouPosition + 40);
 
       doc.end();
 

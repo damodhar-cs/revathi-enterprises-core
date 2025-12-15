@@ -9,13 +9,14 @@ import {
   ValidateNested,
   IsPhoneNumber,
   IsEnum,
+  ValidateIf,
 } from "class-validator";
 import { Type } from "class-transformer";
 import {
   ICreateSaleInputDto,
   ICustomerInfo,
 } from "../interface/sale.interface";
-import { PAYMENT_METHOD_ENUM } from "../../common/enums";
+import { PAYMENT_METHOD_ENUM, FINANCE_PROVIDER_ENUM } from "../../common/enums";
 import { COLOR_ENUM } from "src/common/enums/specifications.enum";
 
 export class CustomerInfoDto implements ICustomerInfo {
@@ -64,6 +65,11 @@ export class CreateSaleInputDto implements ICreateSaleInputDto {
   @Min(0.01)
   selling_price: number;
 
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  imei: string;
+
   @ValidateNested()
   @Type(() => CustomerInfoDto)
   customer: ICustomerInfo;
@@ -71,6 +77,19 @@ export class CreateSaleInputDto implements ICreateSaleInputDto {
   @IsOptional()
   @IsEnum(PAYMENT_METHOD_ENUM)
   payment_method?: PAYMENT_METHOD_ENUM;
+
+  // Finance provider is required when payment_method is FINANCE
+  @ValidateIf((o) => o.payment_method === PAYMENT_METHOD_ENUM.FINANCE)
+  @IsNotEmpty({ message: "Finance provider is required when payment method is Finance" })
+  @IsEnum(FINANCE_PROVIDER_ENUM)
+  finance_provider?: FINANCE_PROVIDER_ENUM;
+
+  // EMI duration is required when payment_method is FINANCE
+  @ValidateIf((o) => o.payment_method === PAYMENT_METHOD_ENUM.FINANCE)
+  @IsNotEmpty({ message: "EMI duration is required when payment method is Finance" })
+  @IsNumber()
+  @Min(1, { message: "EMI duration must be at least 1 month" })
+  emi_duration?: number;
 
   @IsOptional()
   @IsEnum(COLOR_ENUM)

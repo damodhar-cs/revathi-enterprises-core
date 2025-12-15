@@ -11,11 +11,13 @@ I've thoroughly reviewed and updated the entire frontend to match your backend C
 ### 1. **Type Definitions Updated** (`src/types/index.ts`)
 
 **Product Interface:**
+
 - Changed: `name` → `title`
 - Changed: `_id` → `uid` (with `_id` as fallback for MongoDB)
 - Added: `created_by`, `updated_by`, `created_at`, `updated_at` fields
 
 **Variant Interface:**
+
 - Changed: `productId` → `product_uid`
 - Changed: `productName` → `product_name`
 - Changed: `costPrice` → `cost_price`
@@ -23,6 +25,7 @@ I've thoroughly reviewed and updated the entire frontend to match your backend C
 - Added: `created_by`, `updated_by`, `created_at`, `updated_at` fields
 
 **VariantAttributes Interface:**
+
 - Added: `size`, `screen_size` fields
 - Changed: `batteryLife` → `battery_life`
 
@@ -31,6 +34,7 @@ I've thoroughly reviewed and updated the entire frontend to match your backend C
 ### 2. **Enums Updated** (`src/common/enums.ts`)
 
 Added comprehensive enums matching backend:
+
 - `BRAND_OPTIONS` - Vivo, Oppo, Apple, Samsung, OnePlus, Xiaomi, Redmi, Realme
 - `CATEGORY_OPTIONS` - Mobile, Accessories, Tablets, Smartwatches
 - `BRANCH_OPTIONS` - Mahadevapura, Chennasandra, TC Palya
@@ -42,11 +46,13 @@ Added comprehensive enums matching backend:
 ### 3. **API Services Updated** (`src/services/api.ts`)
 
 **Products API:**
+
 - ✅ Changed all product operations to use `uid` instead of `_id`
 - ✅ Updated `updateProduct` and `deleteProduct` to use `uid` parameter
 - ✅ Changed from `PATCH` to `PUT` for updates
 
 **Variants API:**
+
 - ✅ Changed all variant operations to use `uid` instead of `_id`
 - ✅ Updated `updateVariant` and `deleteVariant` to use `uid` parameter
 - ✅ Updated query params to use `product_uid` instead of `productId`
@@ -56,11 +62,13 @@ Added comprehensive enums matching backend:
 ### 4. **Forms Updated**
 
 **ProductForm** (`src/components/ProductForm.tsx`):
+
 - ✅ Changed field name from `name` to `title`
 - ✅ Updated brand and category dropdowns to match backend enums
 - ✅ Updated form validation and submission
 
 **VariantForm** (`src/components/VariantForm.tsx`):
+
 - ✅ Completely rewritten to match backend `CreateVariantInputDto`
 - ✅ All field names updated:
   - `productId` → `product_uid`
@@ -77,12 +85,14 @@ Added comprehensive enums matching backend:
 ### 5. **Pages Updated**
 
 **ProductsPage** (`src/pages/ProductsPage.tsx`):
+
 - ✅ Updated display to show `title` instead of `name`
 - ✅ Updated mutations to use `uid` for update/delete operations
 - ✅ Updated create mutation to send `title` field
 - ✅ Changed API calls from `PATCH` to `PUT`
 
 **VariantsPage** (`src/pages/VariantsPage.tsx`):
+
 - ✅ Updated mutations to use new field names
 - ✅ Updated create mutation to match `CreateVariantInputDto`:
   - `product_name`, `product_uid`, `title`, `cost_price`, `selling_price`, etc.
@@ -91,18 +101,21 @@ Added comprehensive enums matching backend:
 - ✅ Updated navigation to use `product_uid`
 
 **ProductVariantsPage** (`src/pages/ProductVariantsPage.tsx`):
+
 - ✅ Updated all field references: `costPrice` → `cost_price`, `batteryLife` → `battery_life`, etc.
 - ✅ Updated product_uid references for navigation
 - ✅ Updated display columns to match new schema
 - ✅ Added null-safety checks for optional fields
 
 **VariantDetailPage** (`src/pages/VariantDetailPage.tsx`):
+
 - ✅ Updated all field references to match backend schema
 - ✅ Updated display to show `product_name`, `cost_price`, etc.
 - ✅ Removed `isSold` property (not in backend schema)
 - ✅ Added null-safety for optional timestamp fields
 
 **SellForm** (`src/components/SellForm.tsx`):
+
 - ✅ Updated to use `cost_price` instead of `costPrice`
 - ✅ Updated to use `product_name` instead of `productName`
 
@@ -111,6 +124,7 @@ Added comprehensive enums matching backend:
 ### 6. **Query Parameters Updated**
 
 **VariantsQueryParams**:
+
 - ✅ Changed: `productId?` → `product_uid?` to match backend `FindAllVariantsQuery`
 
 ---
@@ -118,6 +132,7 @@ Added comprehensive enums matching backend:
 ## 🎯 Key Features Now Working
 
 ### ✅ Products Management
+
 - Create products with `title`, `brand`, `category`
 - Update products using `uid`
 - Delete products using `uid`
@@ -125,6 +140,7 @@ Added comprehensive enums matching backend:
 - Search and filter products
 
 ### ✅ Variants Management
+
 - Create variants with all new fields (`product_uid`, `product_name`, `title`, `cost_price`, `selling_price`, etc.)
 - Update variants with proper field mapping
 - Delete variants using `uid`
@@ -133,6 +149,7 @@ Added comprehensive enums matching backend:
 - Navigate to variant details
 
 ### ✅ Product-Variant Relationship
+
 - Product selection dropdown uses `uid` and `title`
 - Variants properly linked to products via `product_uid`
 - Navigation between products and variants works correctly
@@ -143,27 +160,28 @@ Added comprehensive enums matching backend:
 
 ### Backend Field Mappings
 
-| Old Frontend | New Frontend | Backend Field |
-|--------------|--------------|---------------|
-| `name` | `title` | `title` |
-| `productId` | `product_uid` | `product_uid` |
-| `productName` | `product_name` | `product_name` |
-| `costPrice` | `cost_price` | `cost_price` |
-| `batteryLife` | `battery_life` | `battery_life` |
-| `_id` (only) | `uid` \| `_id` | `uid` (Contentstack), `_id` (MongoDB) |
+| Old Frontend  | New Frontend   | Backend Field                         |
+| ------------- | -------------- | ------------------------------------- |
+| `name`        | `title`        | `title`                               |
+| `productId`   | `product_uid`  | `product_uid`                         |
+| `productName` | `product_name` | `product_name`                        |
+| `costPrice`   | `cost_price`   | `cost_price`                          |
+| `batteryLife` | `battery_life` | `battery_life`                        |
+| `_id` (only)  | `uid` \| `_id` | `uid` (Contentstack), `_id` (MongoDB) |
 
 ### API Method Changes
 
-| Endpoint | Old Method | New Method |
-|----------|-----------|------------|
-| `PATCH /products/:id` | PATCH | **PUT** |
-| `PATCH /users/:id` | PATCH | **PUT** |
+| Endpoint              | Old Method | New Method |
+| --------------------- | ---------- | ---------- |
+| `PATCH /products/:id` | PATCH      | **PUT**    |
+| `PATCH /users/:id`    | PATCH      | **PUT**    |
 
 ### Validation Updates
 
 All form validations now match backend DTOs:
+
 - `CreateProductsInputDto` - title, brand, category
-- `CreateVariantInputDto` - product_uid, product_name, title, description, sku, category, branch, brand, cost_price, selling_price, quantity, warranty, image, notes, attributes
+- `CreateVariantInputDto` - product_uid, product_name, title, description, imei, category, branch, brand, cost_price, selling_price, quantity, warranty, image, notes, attributes
 - `UpdateVariantDto` - same as create but excludes `title` field
 
 ---
@@ -180,6 +198,7 @@ All TypeScript compilation errors resolved. Both projects build successfully.
 ## 🧪 Testing Checklist
 
 ### Products
+
 - [ ] Create new product with title, brand, category
 - [ ] Edit existing product
 - [ ] Delete product
@@ -187,6 +206,7 @@ All TypeScript compilation errors resolved. Both projects build successfully.
 - [ ] Filter products by category
 
 ### Variants
+
 - [ ] Create new variant (select product from dropdown)
 - [ ] Edit existing variant
 - [ ] Delete variant
@@ -196,6 +216,7 @@ All TypeScript compilation errors resolved. Both projects build successfully.
 - [ ] Navigate to product-specific variants page
 
 ### Integration
+
 - [ ] Product dropdown in variant form shows correct products
 - [ ] Variant creation properly links to selected product
 - [ ] All attributes (RAM, storage, battery_life, screen_size, etc.) save and display correctly
@@ -207,19 +228,23 @@ All TypeScript compilation errors resolved. Both projects build successfully.
 ## 📦 Files Modified
 
 ### Types & Constants
+
 - ✅ `src/types/index.ts` - Updated all interfaces
 - ✅ `src/common/enums.ts` - Added BRAND and CATEGORY options
 - ✅ `src/common/constants.ts` - No changes needed
 
 ### API Services
+
 - ✅ `src/services/api.ts` - Updated all API calls
 
 ### Components
+
 - ✅ `src/components/ProductForm.tsx` - Updated to use `title`
 - ✅ `src/components/VariantForm.tsx` - Complete rewrite with new fields
 - ✅ `src/components/SellForm.tsx` - Updated field names
 
 ### Pages
+
 - ✅ `src/pages/ProductsPage.tsx` - Updated display and mutations
 - ✅ `src/pages/VariantsPage.tsx` - Updated all operations
 - ✅ `src/pages/ProductVariantsPage.tsx` - Updated field references
@@ -230,6 +255,7 @@ All TypeScript compilation errors resolved. Both projects build successfully.
 ## 🚀 Next Steps
 
 1. **Start both servers**:
+
    ```bash
    # Backend
    cd revathi-enterprises
@@ -276,6 +302,7 @@ All TypeScript compilation errors resolved. Both projects build successfully.
 ## 📞 Need Help?
 
 If you encounter any issues:
+
 1. Check browser console for errors
 2. Check backend logs for API errors
 3. Verify MongoDB Atlas connection
@@ -287,4 +314,3 @@ If you encounter any issues:
 **Status**: ✅ **COMPLETE**  
 **Build**: ✅ **SUCCESS**  
 **Ready for Testing**: ✅ **YES**
-
