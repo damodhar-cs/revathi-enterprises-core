@@ -64,33 +64,35 @@ export class FirebaseAuthGuard implements CanActivate {
 
       return true;
     } catch (error) {
-      // Token verification failed
-      throw new UnauthorizedException(
-        `Authentication failed: ${error.message || 'Invalid or expired token'}`,
-      );
+      const message = error instanceof Error ? error.message : 'Invalid or expired token';
+      throw new UnauthorizedException(`Authentication failed: ${message}`);
     }
   }
 
   /**
-   * Extract JWT token from Authorization header
-   * @param request - HTTP request object
-   * @returns Extracted token or null
+   * Extract JWT token from request headers.
+   * Checks Authorization: Bearer <token> first, then falls back to
+   * X-Firebase-Token header (needed when reverse proxies strip Authorization).
    */
   private extractTokenFromHeader(request: any): string | null {
     const authHeader = request.headers?.authorization;
 
-    if (!authHeader) {
-      return null;
+    if (authHeader) {
+      const [type, token] = authHeader.split(' ');
+      // Case-insensitive check to handle proxies that lowercase the value
+      if (type?.toLowerCase() === 'bearer' && token) {
+        return token;
+      }
     }
 
-    // Expected format: "Bearer <token>"
-    const [type, token] = authHeader.split(' ');
-
-    if (type !== 'Bearer' || !token) {
-      return null;
+    // Fallback: some hosting reverse proxies strip the Authorization header.
+    // The frontend sends X-Firebase-Token as a redundant channel.
+    const xToken = request.headers?.['x-firebase-token'];
+    if (xToken) {
+      return xToken;
     }
 
-    return token;
+    return null;
   }
 }
 

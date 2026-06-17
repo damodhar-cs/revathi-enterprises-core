@@ -15,8 +15,19 @@ async function bootstrap() {
     })
   );
 
-  // Enable CORS
-  app.enableCors();
+  // Enable CORS — explicitly list headers so the proxy layer forwards them all,
+  // including Authorization and the X-Firebase-Token fallback.
+  app.enableCors({
+    origin: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'X-Firebase-Token',
+    ],
+    credentials: false,
+  });
 
   // Swagger configuration
   const config = new DocumentBuilder()

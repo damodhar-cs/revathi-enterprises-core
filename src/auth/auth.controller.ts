@@ -93,7 +93,6 @@ export class AuthController {
       const resetLink =
         await this.authService.generatePasswordResetLink(userEmail);
 
-      // Create email template with Firebase reset link
       const emailTemplate = `
 <!DOCTYPE html>
 <html>
