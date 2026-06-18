@@ -9,6 +9,7 @@ export enum COLOR_ENUM {
   GREEN = "Green",
   RED = "Red",
   YELLOW = "Yellow",
+  BROWN = "Brown",
 }
 
 export enum MATERIAL_ENUM {

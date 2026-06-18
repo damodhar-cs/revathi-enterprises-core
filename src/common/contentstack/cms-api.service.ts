@@ -3,6 +3,7 @@ import { HttpService } from "@nestjs/axios";
 import { ConfigService } from "@nestjs/config";
 import { firstValueFrom } from "rxjs";
 import {
+  DEFAULT_LIMIT,
   DEFAULT_LOCALE,
   INCLUDE_PUBLISH_DETAILS,
 } from "../constants/app.constants";
@@ -13,18 +14,28 @@ export class CMSApiService {
   constructor(
     private readonly http: HttpService,
     private readonly configService: ConfigService,
-    private readonly loggerService: LoggerService
+    private readonly loggerService: LoggerService,
   ) {}
 
   async getAllEntries(input: any) {
     try {
-      const { url, body } = input;
+      const { url, body, skip, limit, sort, order } = input;
 
-      const queryParams = {
+      const queryParams: Record<string, any> = {
         locale: DEFAULT_LOCALE,
         include_publish_details: INCLUDE_PUBLISH_DETAILS,
         include_count: true,
       };
+
+      queryParams.skip = skip || 0;
+      queryParams.limit = limit || DEFAULT_LIMIT;
+      if (sort) {
+        if (order === -1 || order === "-1" || order === "desc") {
+          queryParams.desc = sort;
+        } else {
+          queryParams.asc = sort;
+        }
+      }
 
       const headers = {
         api_key: this.configService.get("STACK_API_KEY"),
@@ -38,7 +49,7 @@ export class CMSApiService {
           params: queryParams,
           headers,
           data: body,
-        })
+        }),
       );
 
       const formattedResponse = response?.data;
@@ -78,7 +89,7 @@ export class CMSApiService {
         this.http.get(url, {
           params: queryParams,
           headers,
-        })
+        }),
       );
 
       return response?.data?.entry;
@@ -110,7 +121,7 @@ export class CMSApiService {
       };
 
       const response = await firstValueFrom(
-        this.http.post(url, data, { headers, params: queryParams })
+        this.http.post(url, data, { headers, params: queryParams }),
       );
 
       return response?.data;
@@ -142,7 +153,7 @@ export class CMSApiService {
       };
 
       const response = await firstValueFrom(
-        this.http.put(url, data, { headers, params: queryParams })
+        this.http.put(url, data, { headers, params: queryParams }),
       );
 
       return response?.data;
@@ -174,7 +185,7 @@ export class CMSApiService {
       };
       console.log(url, "deletion url");
       const response = await firstValueFrom(
-        this.http.delete(url, { headers, params: queryParams })
+        this.http.delete(url, { headers, params: queryParams }),
       );
 
       return response?.data;

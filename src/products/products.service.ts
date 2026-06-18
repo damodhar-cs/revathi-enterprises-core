@@ -74,7 +74,14 @@ export class ProductsService {
     const url = this.cmsApiHelperService.getAllEntriesUrl(
       CONTENT_TYPES.PRODUCTS
     );
-    const inputPayload = { url, body };
+    const inputPayload = {
+      url,
+      body,
+      skip: input.skip,
+      limit: input.limit,
+      sort: input.sort,
+      order: input.order,
+    };
     return await this.cmsApiService.getAllEntries(inputPayload);
   }
 

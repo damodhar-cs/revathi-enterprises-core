@@ -59,6 +59,12 @@ export class BaseVariant extends BaseSchema {
       PRODUCT_BRAND_ENUM.Xiaomi,
       PRODUCT_BRAND_ENUM.Redmi,
       PRODUCT_BRAND_ENUM.Realme,
+      PRODUCT_BRAND_ENUM.Nothing,
+      PRODUCT_BRAND_ENUM.POCO,
+      PRODUCT_BRAND_ENUM.Motorola,
+      PRODUCT_BRAND_ENUM.Infinix,
+      PRODUCT_BRAND_ENUM.Itel,
+      PRODUCT_BRAND_ENUM.HMD,
     ],
   })
   brand: PRODUCT_BRAND_ENUM;
@@ -80,9 +86,6 @@ export class BaseVariant extends BaseSchema {
 
   @Prop({ trim: true })
   warranty?: number; // applicable for electronics
-
-  @Prop({ trim: true })
-  image?: string;
 
   @Prop({ trim: true })
   notes?: string;

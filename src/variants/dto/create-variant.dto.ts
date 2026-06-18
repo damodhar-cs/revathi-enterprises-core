@@ -5,7 +5,6 @@ import {
   IsOptional,
   Min,
   MaxLength,
-  IsUrl,
   ValidateNested,
 } from "class-validator";
 import { Type } from "class-transformer";
@@ -67,11 +66,6 @@ export class CreateVariantInputDto implements ICreateVariantInputDto {
   @IsString()
   @MaxLength(100)
   supplier?: string;
-
-  @IsOptional()
-  @IsString()
-  @IsUrl({}, { message: "Image must be a valid URL" })
-  image?: string;
 
   @IsNumber()
   @IsOptional()

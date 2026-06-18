@@ -8,12 +8,7 @@ import { CreateVariantInputDto } from "./dto/create-variant.dto";
 import { UpdateVariantDto } from "./dto/update-variant.dto";
 import { VariantsRepository } from "./variants.repository";
 import { OutputDto } from "../common/dto/query-result";
-import { ProductStatusEnum } from "./enums/variants.enum";
-import { FindAllVariantsQuery } from "./interface/variants-query.interface";
-import {
-  CONTENT_TYPES,
-  DEFAULT_LIMIT,
-} from "../common/constants/app.constants";
+import { CONTENT_TYPES } from "../common/constants/app.constants";
 import { CMSApiHelperService } from "../common/contentstack/cms-api-helper.service";
 import { CMSApiService } from "../common/contentstack/cms-api.service";
 import { ProductsService } from "../products/products.service";
@@ -59,19 +54,21 @@ export class VariantsService {
       if (error instanceof ConflictException) {
         throw error;
       }
-      throw new Error(`Failed to create variant: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to create variant: ${message}`);
     }
   }
 
-  async searchVariants(input): Promise<OutputDto<VariantDocument>> {
+  async searchVariants(input: any): Promise<OutputDto<VariantDocument>> {
     const body: any = {};
     const query: any = {};
 
-    // Search by title (autocomplete)
+    // Search by title or IMEI
     if (input?.search) {
-      query.title = {
-        $regex: input.search,
-      };
+      query.$or = [
+        { title: { $regex: input.search } },
+        { imei: { $regex: input.search } },
+      ];
     }
 
     if (input.product_uid) {
@@ -103,104 +100,17 @@ export class VariantsService {
     const url = this.cmsApiHelperService.getAllEntriesUrl(
       CONTENT_TYPES.VARIANTS
     );
-    const inputPayload = { url, body };
+    const inputPayload = {
+      url,
+      body,
+      skip: input.skip,
+      limit: input.limit,
+      sort: input.sort,
+      order: input.order,
+    };
     return await this.cmsApiService.getAllEntries(inputPayload);
   }
 
-  /**
-   * Find aggregated variants data
-   */
-  // async findAllAggregatedProducts(input: FindAllVariantsQuery): Promise<any[]> {
-  //   try {
-  //     const filters: any = {};
-  //     const sortingOrder = input?.order ? Number(input?.order) : -1;
-  //     const skip = input?.skip ? Number(input?.skip) : 0;
-  //     const limit = input?.limit ? Number(input.limit) : DEFAULT_LIMIT;
-  //     // Category filter
-  //     if (input?.category) {
-  //       filters.category = { $regex: input.category, $options: "i" };
-  //     }
-
-  //     // Branch filter
-  //     if (input?.branch) {
-  //       filters.branch = { $regex: input.branch, $options: "i" };
-  //     }
-
-  //     // Search filter
-  //     if (input?.search) {
-  //       filters.$or = [
-  //         { productName: { $regex: input.search, $options: "i" } },
-  //       ];
-  //     }
-
-  //     const pipeline = [
-  //       {
-  //         $match: filters,
-  //       },
-  //       {
-  //         $group: {
-  //           _id: "$productName",
-  //           count: { $sum: 1 },
-  //           totalStock: { $sum: "$quantity" },
-  //           doc: { $first: "$$ROOT" },
-  //         },
-  //       },
-  //       {
-  //         $replaceRoot: {
-  //           newRoot: {
-  //             $mergeObjects: [
-  //               "$doc",
-  //               { count: "$count", totalStock: "$totalStock" },
-  //             ],
-  //           },
-  //         },
-  //       },
-  //       {
-  //         $addFields: {
-  //           stockStatus: {
-  //             $switch: {
-  //               branches: [
-  //                 {
-  //                   case: { $gte: ["$totalStock", 3] },
-  //                   then: ProductStatusEnum.InStock,
-  //                 },
-  //                 {
-  //                   case: { $eq: ["$totalStock", 0] },
-  //                   then: ProductStatusEnum.OutOfStock,
-  //                 },
-  //               ],
-  //               default: ProductStatusEnum.LowStock,
-  //             },
-  //           },
-  //         },
-  //       },
-  //       // {
-  //       //   $match: {
-  //       //     stockStatus: input?.stockStatus
-  //       //       ? input?.stockStatus
-  //       //       : ProductStatusEnum.InStock,
-  //       //   },
-  //       // },
-  //       {
-  //         $sort: { updatedAt: sortingOrder },
-  //       },
-  //       {
-  //         $skip: skip,
-  //       },
-  //       {
-  //         $limit: limit,
-  //       },
-  //     ];
-  //     console.log(JSON.stringify(pipeline, null, 3), "pipeline");
-  //     return await this.variantsRepository.findAggregatedProducts(pipeline);
-  //   } catch (error) {
-  //     throw new Error(`Failed to find aggregated variants: ${error.message}`);
-  //   }
-  // }
-
-  /**
-   * Find a single variant by ID
-   */
   /**
    * Find a product by UID
    */
@@ -232,7 +142,8 @@ export class VariantsService {
       };
       return await this.cmsApiService.updateEntry(inputPayload);
     } catch (error) {
-      throw new Error(`Failed to update variant: ${error?.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to update variant: ${message}`);
     }
   }
 
@@ -250,7 +161,8 @@ export class VariantsService {
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new Error(`Failed to delete variant: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to delete variant: ${message}`);
     }
   }
 

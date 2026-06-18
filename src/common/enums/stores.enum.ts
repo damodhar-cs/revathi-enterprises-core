@@ -13,4 +13,10 @@ export enum PRODUCT_BRAND_ENUM {
   Xiaomi = "Xiaomi",
   Redmi = "Redmi",
   Realme = "Realme",
+  Nothing = "Nothing",
+  POCO = "POCO",
+  Motorola = "Motorola",
+  Infinix = "Infinix",
+  Itel = "Itel",
+  HMD = "HMD",
 }

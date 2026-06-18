@@ -18,21 +18,8 @@ export interface ICreateVariantInputDto {
 
 export interface IVariantAttributesInputDto {
   color?: string;
-  weight?: number; // in grams
-  size?: string;
-  // Mobile-specific
-  ram?: number; // in GB's
-  storage?: number; // in GB's
+  ram?: number;
+  storage?: number;
   os?: string;
   processor?: string;
-  dimensions?: IVariantDimensionsInputDto;
-  screen_size?: string;
-  battery_life?: number;
-  material?: string;
-}
-
-export interface IVariantDimensionsInputDto {
-  height?: number; // in mm
-  width?: number; // in mm
-  depth?: number; // in mm
 }
