@@ -600,16 +600,36 @@ export class SalesService {
       const doc = new PDFDocument({ size: "A4", margin: 50 });
       const chunks: Buffer[] = [];
 
-      // Define rupee symbol - using String.fromCharCode for better compatibility
-      const rupeeSymbol = String.fromCharCode(8377); // ₹ symbol
+      // Register NotoSans fonts (supports ₹ and full Unicode)
+      const fs = require("fs");
+      const path = require("path");
+      const fontRegular = path.join(
+        process.cwd(),
+        "assets",
+        "fonts",
+        "NotoSans-Regular.ttf"
+      );
+      const fontBold = path.join(
+        process.cwd(),
+        "assets",
+        "fonts",
+        "NotoSans-Bold.ttf"
+      );
+      if (fs.existsSync(fontRegular) && fs.existsSync(fontBold)) {
+        doc.registerFont("NotoSans", fontRegular);
+        doc.registerFont("NotoSans-Bold", fontBold);
+      } else {
+        doc.registerFont("NotoSans", "Helvetica");
+        doc.registerFont("NotoSans-Bold", "Helvetica-Bold");
+      }
+
+      const rupeeSymbol = "₹";
 
       doc.on("data", (chunk: Buffer) => chunks.push(chunk));
 
       // --- HEADER SECTION ---
       // Add logo on top right (if exists)
       try {
-        const fs = require("fs");
-        const path = require("path");
         const logoPath = path.join(process.cwd(), "assets", "logo.png");
 
         if (fs.existsSync(logoPath)) {
@@ -625,12 +645,12 @@ export class SalesService {
 
       doc
         .fontSize(20)
-        .font("Helvetica-Bold")
+        .font("NotoSans-Bold")
         .text("Revathi Enterprises", 50, 50);
 
       doc
         .fontSize(9)
-        .font("Helvetica")
+        .font("NotoSans")
         .text(STORE_ADDRESS, 50, 75, { width: 350, lineGap: 2 });
 
       doc.text(`Phone no.: ${STORE_OWNER_MOBILE}`, 50, doc.y + 2);
@@ -647,7 +667,7 @@ export class SalesService {
       // TAX INVOICE TITLE (centered and bold)
       doc
         .fontSize(18)
-        .font("Helvetica-Bold")
+        .font("NotoSans-Bold")
         .fillColor("#6366F1") // Purple color
         .text("Tax Invoice", 50, doc.y + 15, { align: "center", width: 500 });
 
@@ -659,24 +679,24 @@ export class SalesService {
       const billToY = doc.y;
 
       // Left side - Bill To
-      doc.fontSize(10).font("Helvetica-Bold").text("Bill To", 50, billToY);
+      doc.fontSize(10).font("NotoSans-Bold").text("Bill To", 50, billToY);
       doc
         .fontSize(11)
-        .font("Helvetica-Bold")
+        .font("NotoSans-Bold")
         .text(sale.customer.name.toUpperCase(), 50, billToY + 18);
       doc
         .fontSize(9)
-        .font("Helvetica")
+        .font("NotoSans")
         .text(`Contact No.: ${sale.customer.phone}`, 50, billToY + 35);
 
       // Right side - Invoice Details
       doc
         .fontSize(10)
-        .font("Helvetica-Bold")
+        .font("NotoSans-Bold")
         .text("Invoice Details", 350, billToY, { align: "right" });
       doc
         .fontSize(9)
-        .font("Helvetica")
+        .font("NotoSans")
         .text(`Invoice No.: ${invoiceNo}`, 350, billToY + 18, {
           align: "right",
         })
@@ -708,7 +728,7 @@ export class SalesService {
       // Table Header (Purple background)
       doc.rect(col1X, tableTop, 500, 20).fillAndStroke("#8B5CF6", "#000");
 
-      doc.fillColor("#FFFFFF").fontSize(9).font("Helvetica-Bold");
+      doc.fillColor("#FFFFFF").fontSize(9).font("NotoSans-Bold");
       doc.text("#", col1X + 5, tableTop + 6);
       doc.text("Item name", col2X + 5, tableTop + 6);
       doc.text("HSN/ SAC", col3X + 5, tableTop + 6);
@@ -719,9 +739,9 @@ export class SalesService {
 
       // Table Row
       const rowTop = tableTop + 25;
-      doc.fillColor("#000000").fontSize(8).font("Helvetica");
+      doc.fillColor("#000000").fontSize(8).font("NotoSans");
 
-      const itemName = `${sale.name || sale.product_name || "Product"} ${sale.imei ? `IMEI NO-${sale.imei}` : ""}`;
+      const itemName = `${(sale.name || sale.product_name || "Product").toUpperCase()} ${sale.imei ? `IMEI NO-${sale.imei}` : ""}`;
 
       doc.text("1", col1X + 5, rowTop);
       doc.text(itemName, col2X + 5, rowTop, { width: 170 });
@@ -739,7 +759,7 @@ export class SalesService {
       // Total Row
       const totalRowTop = rowTop + 30;
       doc.rect(col1X, totalRowTop, 500, 20).stroke();
-      doc.fontSize(9).font("Helvetica-Bold");
+      doc.fontSize(9).font("NotoSans-Bold");
       doc.text("Total", col2X + 5, totalRowTop + 6);
       doc.text("1", col4X + 10, totalRowTop + 6);
       doc.text(
@@ -762,21 +782,21 @@ export class SalesService {
       // Left side - Amount in words & Payment Details
       doc
         .fontSize(9)
-        .font("Helvetica-Bold")
+        .font("NotoSans-Bold")
         .text("Invoice Amount In Words", col1X, bottomY);
       doc
         .fontSize(9)
-        .font("Helvetica")
+        .font("NotoSans")
         .text(amountInWords, col1X, bottomY + 15, { width: 300 });
 
       // Payment Details Section
       doc
         .fontSize(9)
-        .font("Helvetica-Bold")
+        .font("NotoSans-Bold")
         .text("Mode of Payment", col1X, bottomY + 45);
       doc
         .fontSize(9)
-        .font("Helvetica")
+        .font("NotoSans")
         .text(sale.payment_method || "N/A", col1X, bottomY + 60);
 
       // Show Finance details if payment method is Finance
@@ -784,20 +804,20 @@ export class SalesService {
       if (sale.payment_method === "Finance" && sale.finance_provider) {
         doc
           .fontSize(9)
-          .font("Helvetica-Bold")
+          .font("NotoSans-Bold")
           .text("Finance Provider", col1X, nextYPosition);
         doc
           .fontSize(9)
-          .font("Helvetica")
+          .font("NotoSans")
           .text(sale.finance_provider, col1X, nextYPosition + 15);
 
         doc
           .fontSize(9)
-          .font("Helvetica-Bold")
+          .font("NotoSans-Bold")
           .text("EMI Duration", col1X, nextYPosition + 35);
         doc
           .fontSize(9)
-          .font("Helvetica")
+          .font("NotoSans")
           .text(`${sale.emi_duration || 0} months`, col1X, nextYPosition + 50);
 
         nextYPosition += 70; // Move down after finance details
@@ -806,7 +826,7 @@ export class SalesService {
       }
 
       // Right side - Summary
-      doc.fontSize(9).font("Helvetica");
+      doc.fontSize(9).font("NotoSans");
       doc.text("Sub Total", 350, bottomY, { align: "left", width: 100 });
       doc.text(`${rupeeSymbol} ${subtotal.toFixed(2)}`, 470, bottomY, {
         align: "right",
@@ -827,7 +847,7 @@ export class SalesService {
 
       // Total with purple background
       doc.rect(350, bottomY + 52, 200, 20).fillAndStroke("#8B5CF6", "#000");
-      doc.fillColor("#FFFFFF").fontSize(10).font("Helvetica-Bold");
+      doc.fillColor("#FFFFFF").fontSize(10).font("NotoSans-Bold");
       doc.text("Total", 350, bottomY + 58, { align: "left", width: 100 });
       doc.text(
         `${rupeeSymbol} ${sellingPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
@@ -836,7 +856,7 @@ export class SalesService {
         { align: "right", width: 80 }
       );
 
-      doc.fillColor("#000000").fontSize(9).font("Helvetica");
+      doc.fillColor("#000000").fontSize(9).font("NotoSans");
       doc.text("Received", 350, bottomY + 78, { align: "left", width: 100 });
       doc.text(
         `${rupeeSymbol} ${sellingPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
@@ -856,20 +876,44 @@ export class SalesService {
       // Right side ends at bottomY + 96 (Balance), left side at nextYPosition
       const thankYouPosition = Math.max(nextYPosition + 20, bottomY + 115);
 
-      // Thank you message (bold) - positioned below all payment details
+      // --- RIGHT SIDE: Authorized Signatory label → stamp below it ---
+      const signaturePath = path.join(process.cwd(), "assets", "signature.png");
+      const stampWidth = 150;
+      const stampX = 400;
+
+      // Label first
       doc
-        .fontSize(10)
-        .font("Helvetica-Bold")
-        .text("Thank you for doing business with us.", 50, thankYouPosition, {
+        .fontSize(8)
+        .font("NotoSans")
+        .text("Authorized Signatory", stampX, thankYouPosition, {
+          width: stampWidth,
+          align: "center",
+        });
+
+      // Stamp/seal image below the label
+      const stampY = thankYouPosition + 14;
+      if (fs.existsSync(signaturePath)) {
+        doc.image(signaturePath, stampX, stampY, { width: stampWidth });
+      }
+      const stampHeight = Math.round(stampWidth * (899 / 1599)); // ~84pt
+
+      // --- THANK YOU (full-width, below stamp, no overlap) ---
+      const footerY = stampY + stampHeight + 16;
+      doc
+        .moveTo(50, footerY)
+        .lineTo(550, footerY)
+        .strokeColor("#cccccc")
+        .lineWidth(0.5)
+        .stroke();
+      doc
+        .strokeColor("#000000")
+        .lineWidth(1)
+        .fontSize(9)
+        .font("NotoSans-Bold")
+        .text("Thank you for doing business with us.", 50, footerY + 8, {
           align: "center",
           width: 500,
         });
-
-      // Signature placeholder - below thank you message
-      doc
-        .fontSize(9)
-        .font("Helvetica")
-        .text("Authorized Signatory", 420, thankYouPosition + 40);
 
       doc.end();
 
