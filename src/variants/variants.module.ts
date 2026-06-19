@@ -7,6 +7,7 @@ import { VariantsRepository } from "./variants.repository";
 import { PRODUCTS_DATABASE } from "../common/constants/app.constants";
 import { ProductsModule } from "../products/products.module";
 import { CMSModule } from "../common/contentstack/cms.module";
+import { MailModule } from "../mail/mail.module";
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { CMSModule } from "../common/contentstack/cms.module";
     ),
     ProductsModule,
     CMSModule,
+    MailModule,
   ],
   controllers: [VariantsController],
   providers: [VariantsRepository, VariantsService],

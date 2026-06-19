@@ -1,6 +1,6 @@
 export interface ICreateVariantInputDto {
   product_name: string;
-  title?: string;
+  name: string;
   product_uid: string;
   description?: string;
   imei?: string;

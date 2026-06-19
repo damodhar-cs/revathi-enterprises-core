@@ -285,4 +285,84 @@ export class MailService {
       throw error;
     }
   }
+
+  async sendVariantsExportEmail(
+    recipientEmail: string,
+    excelBuffer: Buffer,
+    fileName: string,
+    exportDetails: {
+      totalRecords: number;
+      filters?: string;
+      exportDate: string;
+    }
+  ): Promise<void> {
+    this.loggerService.logMethodEntry("MailService", "sendVariantsExportEmail", {
+      recipientEmail,
+      fileName,
+      fileSize: excelBuffer.length,
+      totalRecords: exportDetails.totalRecords,
+    });
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #1976D2; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+            .content { background-color: #f9f9f9; padding: 20px; border: 1px solid #ddd; border-radius: 0 0 5px 5px; }
+            .details { background-color: white; padding: 15px; margin: 15px 0; border-left: 4px solid #1976D2; }
+            .footer { margin-top: 20px; text-align: center; font-size: 12px; color: #777; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h2>📦 Variants Export Report</h2>
+            </div>
+            <div class="content">
+              <p>Dear User,</p>
+              <p>Your variants data export has been generated successfully. Please find the attached Excel file.</p>
+              <div class="details">
+                <h3>Export Details:</h3>
+                <ul>
+                  <li><strong>Total Records:</strong> ${exportDetails.totalRecords}</li>
+                  <li><strong>Export Date:</strong> ${exportDetails.exportDate}</li>
+                  ${exportDetails.filters ? `<li><strong>Applied Filters:</strong> ${exportDetails.filters}</li>` : ""}
+                </ul>
+              </div>
+              <p><strong>Attached File:</strong> ${fileName}</p>
+              <p>Best regards,<br>Revathi Enterprises Team</p>
+            </div>
+            <div class="footer">
+              <p>This is an automated email. Please do not reply to this message.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    try {
+      await this.sendEmail({
+        to: recipientEmail,
+        subject: "Variants Export Report - Revathi Enterprises",
+        html: htmlContent,
+        attachments: [{ filename: fileName, content: excelBuffer }],
+      });
+
+      this.loggerService.logMethodExit("MailService", "sendVariantsExportEmail", {
+        success: true,
+        recipientEmail,
+      });
+    } catch (error) {
+      this.loggerService.error({
+        message: "Failed to send variants export email",
+        context: "MailService",
+        error: { stack: error?.stack, message: error?.message },
+        metadata: { recipientEmail, fileName, exportDetails },
+      });
+      throw error;
+    }
+  }
 }

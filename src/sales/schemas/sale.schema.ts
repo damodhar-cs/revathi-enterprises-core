@@ -44,7 +44,7 @@ export class Sale extends BaseSchema implements ISale {
   product_name: string; // Reference to the sold variant
 
   @Prop({ required: true, trim: true })
-  title: string; // Denormalized for easy access // mapped to productTitle in cms
+  name: string;
 
   @Prop({ required: true, trim: true })
   imei: string; // Denormalized for easy access

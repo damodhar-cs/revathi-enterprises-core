@@ -11,12 +11,8 @@ export class BaseVariant extends BaseSchema {
   @Prop({ required: true, trim: true })
   product_name: string; // name  of the product
 
-  /**
-   * random uid for cms integration
-   * should not be used anywhere
-   */
   @Prop({ required: true, trim: true })
-  title: string;
+  name: string;
 
   @Prop({ required: true, trim: true })
   description?: string;

@@ -21,8 +21,9 @@ export class CreateVariantInputDto implements ICreateVariantInputDto {
   product_name: string;
 
   @IsString()
-  @IsOptional()
-  title?: string; // purely for cms
+  @IsNotEmpty()
+  @MaxLength(255)
+  name: string;
 
   @IsString()
   @IsNotEmpty()

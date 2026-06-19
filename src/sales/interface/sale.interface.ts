@@ -20,7 +20,7 @@ export interface ICustomerInfo {
 export interface ISale extends BaseInterface {
   variant_uid: string;
   product_name: string;
-  title: string;
+  name: string;
   imei: string;
   category: PRODUCT_TYPE_ENUM;
   brand: PRODUCT_BRAND_ENUM;

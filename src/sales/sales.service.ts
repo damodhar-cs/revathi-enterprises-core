@@ -64,7 +64,7 @@ export class SalesService {
       const enrichedSaleData = {
         ...input,
         product_name: existingVariant.product_name,
-        title: existingVariant.title || existingVariant.product_name, // Product title for CMS
+        name: existingVariant.name || existingVariant.product_name,
         imei: saleImei,
         category: existingVariant.category,
         brand: existingVariant.brand,
@@ -137,9 +137,9 @@ export class SalesService {
     const query: any = {};
 
     try {
-      // Search by title (autocomplete)
+      // Search by name (autocomplete)
       if (filters?.search) {
-        query.title = {
+        query.name = {
           $regex: filters.search,
         };
       }
@@ -362,19 +362,19 @@ export class SalesService {
       // Add data rows
       salesData.items.forEach((sale) => {
         worksheet.addRow([
-          sale.title,
+          sale.name,
           sale.receipt_number || "N/A",
           sale.imei,
           sale.category,
           sale.brand,
           sale.branch,
-          sale.customer.name,
-          sale.customer.phone,
-          sale.customer.email || "N/A",
-          sale.customer.address || "N/A",
-          sale.customer.city || "N/A",
-          sale.customer.state || "N/A",
-          sale.customer.pincode || "N/A",
+          sale.customer?.name || "N/A",
+          sale.customer?.phone || "N/A",
+          sale.customer?.email || "N/A",
+          sale.customer?.address || "N/A",
+          sale.customer?.city || "N/A",
+          sale.customer?.state || "N/A",
+          sale.customer?.pincode || "N/A",
           sale.cost_price,
           sale.selling_price,
           sale.profit_margin,
@@ -721,7 +721,7 @@ export class SalesService {
       const rowTop = tableTop + 25;
       doc.fillColor("#000000").fontSize(8).font("Helvetica");
 
-      const itemName = `${sale.title || sale.product_name || "Product"} ${sale.imei ? `IMEI NO-${sale.imei}` : ""}`;
+      const itemName = `${sale.name || sale.product_name || "Product"} ${sale.imei ? `IMEI NO-${sale.imei}` : ""}`;
 
       doc.text("1", col1X + 5, rowTop);
       doc.text(itemName, col2X + 5, rowTop, { width: 170 });
@@ -919,7 +919,7 @@ export class SalesService {
           <p><strong>Order Details:</strong></p>
           <ul>
             <li>Receipt No: ${sale.uid.toString().slice(-8).toUpperCase()}</li>
-            <li>Product: ${sale.title}</li>
+            <li>Product: ${sale.name}</li>
             <li>Amount: ₹${sale.selling_price.toLocaleString("en-IN")}</li>
             <li>Date: ${new Date(sale.created_at).toLocaleDateString("en-IN")}</li>
           </ul>
