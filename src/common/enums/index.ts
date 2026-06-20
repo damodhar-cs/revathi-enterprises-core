@@ -19,3 +19,8 @@ export enum PRODUCT_BRANCH_ENUM {
   CHENNASANDRA = "Chennasandra",
   TC_PALYA = "TC Palya",
 }
+
+export enum SALE_STATUS_ENUM {
+  ACTIVE = "active",
+  CANCELLED = "cancelled",
+}

@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document } from "mongoose";
 import { BaseSchema } from "../../common/base.schema";
-import { PAYMENT_METHOD_ENUM, PRODUCT_BRANCH_ENUM, FINANCE_PROVIDER_ENUM } from "../../common/enums";
+import { PAYMENT_METHOD_ENUM, PRODUCT_BRANCH_ENUM, FINANCE_PROVIDER_ENUM, SALE_STATUS_ENUM } from "../../common/enums";
 import { ISale, ICustomerInfo } from "../interface/sale.interface";
 import { PRODUCT_TYPE_ENUM } from "../../common/enums/products.enum";
 import { PRODUCT_BRAND_ENUM } from "../../common/enums/stores.enum";
@@ -9,7 +9,7 @@ import { COLOR_ENUM } from "../../common/enums/specifications.enum";
 
 export type SaleDocument = Sale & Document;
 
-@Schema({ _id: false }) // prevent creating separate _id for each customer doc
+@Schema({ _id: false })
 export class CustomerInfo implements ICustomerInfo {
   @Prop({ required: true, trim: true })
   name: string;
@@ -37,63 +37,67 @@ export const CustomerInfoSchema = SchemaFactory.createForClass(CustomerInfo);
 
 @Schema({ timestamps: true })
 export class Sale extends BaseSchema implements ISale {
+  // --- Required fields ---
   @Prop({ required: true, trim: true })
-  variant_uid: string; // Reference to the sold variant
+  variant_uid: string;
 
   @Prop({ required: true, trim: true })
-  product_name: string; // Reference to the sold variant
+  product_name: string;
 
   @Prop({ required: true, trim: true })
   name: string;
 
   @Prop({ required: true, trim: true })
-  imei: string; // Denormalized for easy access
+  imei: string;
 
   @Prop({ required: true, enum: PRODUCT_TYPE_ENUM })
-  category: PRODUCT_TYPE_ENUM; // Denormalized for easy access
+  category: PRODUCT_TYPE_ENUM;
 
   @Prop({ required: true, trim: true, enum: PRODUCT_BRAND_ENUM })
-  brand: PRODUCT_BRAND_ENUM; // Denormalized for easy access
+  brand: PRODUCT_BRAND_ENUM;
 
   @Prop({ required: true, enum: PRODUCT_BRANCH_ENUM })
-  branch: PRODUCT_BRANCH_ENUM; // Denormalized for easy access
+  branch: PRODUCT_BRANCH_ENUM;
 
   @Prop({ required: true, min: 0 })
-  cost_price: number; // Cost price at time of sale
+  cost_price: number;
 
   @Prop({ required: true, min: 0 })
-  selling_price: number; // Actual selling price
+  selling_price: number;
 
   @Prop({ required: true, min: 0 })
-  profit_margin: number; // Calculated profit
+  profit_margin: number;
+
+  @Prop({ required: true, trim: true })
+  invoice_number: string;
+
+  @Prop({ required: true, enum: SALE_STATUS_ENUM, default: SALE_STATUS_ENUM.ACTIVE })
+  status: SALE_STATUS_ENUM;
 
   @Prop({ type: CustomerInfoSchema, required: true })
   customer: CustomerInfo;
 
+  // --- Optional fields ---
   @Prop({ enum: PAYMENT_METHOD_ENUM })
-  payment_method?: PAYMENT_METHOD_ENUM; // Cash, Card, UPI, Finance, etc.
+  payment_method?: PAYMENT_METHOD_ENUM;
 
   @Prop({ enum: FINANCE_PROVIDER_ENUM })
-  finance_provider?: FINANCE_PROVIDER_ENUM; // Finance provider (if payment_method is Finance)
+  finance_provider?: FINANCE_PROVIDER_ENUM;
 
   @Prop({ min: 1 })
-  emi_duration?: number; // EMI duration in months (if payment_method is Finance)
-
-  @Prop({ trim: true, unique: true, sparse: true })
-  receipt_number?: string; // Generated receipt number
+  emi_duration?: number;
 
   @Prop({ trim: true })
-  notes?: string; // Additional notes
+  notes?: string;
 
-  // Variant technical specifications for historical record // add this in json type
   @Prop({ trim: true, enum: COLOR_ENUM })
-  color?: COLOR_ENUM; // Color from variant
+  color?: COLOR_ENUM;
 
   @Prop()
-  ram?: number; // RAM in GB from variant
+  ram?: number;
 
   @Prop()
-  storage?: number; // Storage in GB from variant
+  storage?: number;
 }
 
 export const SaleSchema = SchemaFactory.createForClass(Sale);

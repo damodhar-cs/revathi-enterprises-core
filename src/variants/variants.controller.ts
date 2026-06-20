@@ -17,6 +17,7 @@ import { CreateVariantInputDto } from "./dto/create-variant.dto";
 import { UpdateVariantDto } from "./dto/update-variant.dto";
 import { SearchVariantsDto } from "./dto/search-variant.dto";
 import { ExportVariantsDto } from "./dto/export-variants.dto";
+import { MESSAGES } from "../common/constants/messages.constants";
 
 @ApiTags("Variants")
 @Controller("variants")
@@ -26,8 +27,10 @@ export class VariantsController {
   constructor(private readonly variantsService: VariantsService) {}
 
   @Post()
-  createVariant(@Body() createVariantInputDto: CreateVariantInputDto) {
-    return this.variantsService.create(createVariantInputDto);
+  @HttpCode(HttpStatus.CREATED)
+  async createVariant(@Body() createVariantInputDto: CreateVariantInputDto) {
+    const variant = await this.variantsService.create(createVariantInputDto);
+    return { message: MESSAGES.VARIANT.CREATED, variant };
   }
 
   @Post("search")
@@ -59,15 +62,17 @@ export class VariantsController {
   }
 
   @Put(":uid")
-  updateVariant(
+  async updateVariant(
     @Param("uid") uid: string,
     @Body() updateVariantDto: UpdateVariantDto
   ) {
-    return this.variantsService.updateVariant(uid, updateVariantDto);
+    const variant = await this.variantsService.updateVariant(uid, updateVariantDto);
+    return { message: MESSAGES.VARIANT.UPDATED, variant };
   }
 
   @Delete(":uid")
-  deleteVariant(@Param("uid") uid: string) {
-    return this.variantsService.deleteVariant(uid);
+  async deleteVariant(@Param("uid") uid: string) {
+    await this.variantsService.deleteVariant(uid);
+    return { message: MESSAGES.VARIANT.DELETED };
   }
 }

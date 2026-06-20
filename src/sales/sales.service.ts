@@ -2,11 +2,9 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
-  Logger,
 } from "@nestjs/common";
 import * as ExcelJS from "exceljs";
-import { SalesRepository } from "./sales.repository";
-import { VariantsRepository } from "../variants/variants.repository";
+import PDFDocument = require("pdfkit");
 import { MailService } from "../mail/mail.service";
 import { SaleDocument } from "./schemas/sale.schema";
 import { CreateSaleInputDto } from "./dto/create-sale.dto";
@@ -16,19 +14,29 @@ import { VariantsService } from "src/variants/variants.service";
 import { CMSApiService } from "src/common/contentstack/cms-api.service";
 import { CMSApiHelperService } from "src/common/contentstack/cms-api-helper.service";
 import { CONTENT_TYPES } from "src/common/constants/app.constants";
+import { SALE_STATUS_ENUM } from "src/common/enums";
 
 @Injectable()
 export class SalesService {
-  private readonly logger = new Logger(SalesService.name);
-
   constructor(
     private readonly loggerService: LoggerService,
-    private readonly salesRepository: SalesRepository,
     private readonly variantsService: VariantsService,
     private readonly mailService: MailService,
     private readonly cmsApiService: CMSApiService,
     private readonly cmsApiHelperService: CMSApiHelperService
   ) {}
+
+  private async getNextInvoiceNumber(): Promise<string> {
+    const url = this.cmsApiHelperService.getAllEntriesUrl(CONTENT_TYPES.SALES);
+    const result = await this.cmsApiService.getAllEntries({
+      url,
+      limit: 1,
+      sort: 'created_at',
+      order: 'desc',
+    });
+    const lastInvoiceNumber = parseInt(result.items?.[0]?.invoice_number ?? '0', 10);
+    return String(lastInvoiceNumber + 1).padStart(5, '0');
+  }
 
   /**
    * Create a new sale and mark variant as sold
@@ -61,6 +69,8 @@ export class SalesService {
         throw new Error(`IMEI is required for sale`);
       }
 
+      const invoice_number = await this.getNextInvoiceNumber();
+
       const enrichedSaleData = {
         ...input,
         product_name: existingVariant.product_name,
@@ -73,9 +83,9 @@ export class SalesService {
         profit_margin,
         ram: existingVariant.attributes?.ram,
         storage: existingVariant.attributes?.storage,
+        invoice_number,
+        status: SALE_STATUS_ENUM.ACTIVE,
       };
-      console.log(JSON.stringify(enrichedSaleData, null, 3), "enriched data");
-
       const url = this.cmsApiHelperService.createOneEntryUrl(
         CONTENT_TYPES.SALES
       );
@@ -113,7 +123,7 @@ export class SalesService {
       }
 
       return result;
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof ConflictException) {
         throw error;
       }
@@ -166,7 +176,7 @@ export class SalesService {
       );
       const inputPayload = { url, body };
       return await this.cmsApiService.getAllEntries(inputPayload);
-    } catch (error) {
+    } catch (error: any) {
       this.loggerService.error({
         message: "Error while searching sales",
         context: "SalesService",
@@ -191,7 +201,7 @@ export class SalesService {
         uid
       );
       return await this.cmsApiService.getEntry({ url });
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -229,7 +239,7 @@ export class SalesService {
       );
 
       return { totalSales, totalRevenue, totalProfit };
-    } catch (error) {
+    } catch (error: any) {
       throw new Error(`Failed to get sales statistics: ${error.message}`);
     }
   }
@@ -297,8 +307,8 @@ export class SalesService {
       const headerRow = filterText ? 5 : 4;
       worksheet.getRow(headerRow).values = [
         "Product title",
-        "Receipt Number",
-        "SKU",
+        "Invoice Number",
+        "IMEI",
         "Category",
         "Brand",
         "Branch",
@@ -363,7 +373,7 @@ export class SalesService {
       salesData.items.forEach((sale) => {
         worksheet.addRow([
           sale.name,
-          sale.receipt_number || "N/A",
+          sale.invoice_number,
           sale.imei,
           sale.category,
           sale.brand,
@@ -402,9 +412,13 @@ export class SalesService {
         }
       });
 
-      // Add summary at the end
+      // Add summary at the end — compute from already-fetched data to avoid a second API call
       const summaryStartRow = worksheet.lastRow.number + 3;
-      const statistics = await this.getStatistics(filters);
+      const statistics = {
+        totalSales: salesData.count,
+        totalRevenue: salesData.items.reduce((sum, sale) => sum + (sale.selling_price || 0), 0),
+        totalProfit: salesData.items.reduce((sum, sale) => sum + (sale.profit_margin || 0), 0),
+      };
 
       worksheet.getCell(`A${summaryStartRow}`).value = "Summary";
       worksheet.getCell(`A${summaryStartRow}`).font = {
@@ -458,7 +472,7 @@ export class SalesService {
         totalRecords: salesData.count,
         fileName,
       });
-    } catch (error) {
+    } catch (error: any) {
       this.loggerService.error({
         message: "error while exporting sales data",
         context: "SalesService",
@@ -484,8 +498,6 @@ export class SalesService {
     });
 
     try {
-      const PDFDocument = require("pdfkit");
-
       const sale = await this.findSaleByUid(saleUid);
       if (!sale) {
         throw new NotFoundException(`Sale with ID ${saleUid} not found`);
@@ -503,7 +515,6 @@ export class SalesService {
         process.env.STORE_STATE_ADDRESS || "29-Karnataka";
 
       // Calculate GST (18% split into SGST 9% and CGST 9%)
-      const costPrice = sale.cost_price || 0;
       const sellingPrice = sale.selling_price;
       const subtotal = sellingPrice / 1.18; // Price before GST
       const sgst = subtotal * 0.09; // 9% SGST
@@ -590,12 +601,7 @@ export class SalesService {
 
       const amountInWords = convertToWords(sellingPrice);
 
-      // Generate Invoice Number (using timestamp)
-      const invoiceNo = `${new Date().getFullYear()}${(new Date().getMonth() + 1).toString().padStart(2, "0")}${new Date().getDate().toString().padStart(2, "0")}${Math.floor(
-        Math.random() * 1000
-      )
-        .toString()
-        .padStart(3, "0")}`;
+      const invoiceNo = sale.invoice_number;
 
       const doc = new PDFDocument({ size: "A4", margin: 50 });
       const chunks: Buffer[] = [];
@@ -635,7 +641,7 @@ export class SalesService {
         if (fs.existsSync(logoPath)) {
           doc.image(logoPath, 480, 40, { width: 80, height: 80 });
         }
-      } catch (error) {
+      } catch (error: any) {
         // Logo not found, continue without it
         this.loggerService.warn({
           message: "Logo file not found, skipping logo in receipt",
@@ -717,13 +723,12 @@ export class SalesService {
 
       // --- TABLE SECTION ---
       const tableTop = doc.y + 10;
-      const col1X = 50; // #
-      const col2X = 70; // Item name
-      const col3X = 250; // HSN/SAC
-      const col4X = 300; // Quantity
-      const col5X = 350; // Price/unit
-      const col6X = 420; // GST
-      const col7X = 480; // Amount
+      const col1X = 50;  // #
+      const col2X = 70;  // Item name (wider — HSN/SAC column removed)
+      const col3X = 315; // Quantity
+      const col4X = 360; // Price/unit
+      const col5X = 425; // GST
+      const col6X = 483; // Amount
 
       // Table Header (Purple background)
       doc.rect(col1X, tableTop, 500, 20).fillAndStroke("#8B5CF6", "#000");
@@ -731,47 +736,51 @@ export class SalesService {
       doc.fillColor("#FFFFFF").fontSize(9).font("NotoSans-Bold");
       doc.text("#", col1X + 5, tableTop + 6);
       doc.text("Item name", col2X + 5, tableTop + 6);
-      doc.text("HSN/ SAC", col3X + 5, tableTop + 6);
-      doc.text("Quantity", col4X + 5, tableTop + 6);
-      doc.text("Price/ unit", col5X + 5, tableTop + 6);
-      doc.text("GST", col6X + 5, tableTop + 6);
-      doc.text("Amount", col7X + 5, tableTop + 6);
+      doc.text("Qty", col3X + 5, tableTop + 6);
+      doc.text("Price/unit", col4X + 5, tableTop + 6);
+      doc.text("GST", col5X + 5, tableTop + 6);
+      doc.text("Amount", col6X + 5, tableTop + 6);
 
       // Table Row
       const rowTop = tableTop + 25;
       doc.fillColor("#000000").fontSize(8).font("NotoSans");
 
-      const itemName = `${(sale.name || sale.product_name || "Product").toUpperCase()} ${sale.imei ? `IMEI NO-${sale.imei}` : ""}`;
+      const productTitle = (sale.name || sale.product_name || "Product").toUpperCase();
+      const specsLine = [
+        sale.imei ? `IMEI: ${sale.imei}` : null,
+        sale.ram ? `${sale.ram}GB RAM` : null,
+        sale.storage ? `${sale.storage}GB Storage` : null,
+      ].filter(Boolean).join(" | ");
+      const itemName = specsLine ? `${productTitle}\n${specsLine}` : productTitle;
 
       doc.text("1", col1X + 5, rowTop);
-      doc.text(itemName, col2X + 5, rowTop, { width: 170 });
-      doc.text("-", col3X + 5, rowTop);
-      doc.text("1", col4X + 10, rowTop);
-      doc.text(`${rupeeSymbol} ${subtotal.toFixed(2)}`, col5X + 5, rowTop);
-      doc.text(`${rupeeSymbol} ${totalGST.toFixed(2)}`, col6X + 5, rowTop);
+      doc.text(itemName, col2X + 5, rowTop, { width: 238 });
+      doc.text("1", col3X + 5, rowTop);
+      doc.text(`${rupeeSymbol} ${subtotal.toFixed(2)}`, col4X + 5, rowTop);
+      doc.text(`${rupeeSymbol} ${totalGST.toFixed(2)}`, col5X + 5, rowTop);
       doc.text(
         `${rupeeSymbol} ${sellingPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        col7X + 5,
+        col6X + 5,
         rowTop,
-        { align: "right", width: 60 }
+        { align: "right", width: 57 }
       );
 
-      // Total Row
-      const totalRowTop = rowTop + 30;
+      // Total Row — extra gap to accommodate 2-line item name
+      const totalRowTop = rowTop + 45;
       doc.rect(col1X, totalRowTop, 500, 20).stroke();
       doc.fontSize(9).font("NotoSans-Bold");
       doc.text("Total", col2X + 5, totalRowTop + 6);
-      doc.text("1", col4X + 10, totalRowTop + 6);
+      doc.text("1", col3X + 5, totalRowTop + 6);
       doc.text(
         `${rupeeSymbol} ${totalGST.toFixed(2)}`,
-        col6X + 5,
+        col5X + 5,
         totalRowTop + 6
       );
       doc.text(
         `${rupeeSymbol} ${sellingPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        col7X + 5,
+        col6X + 5,
         totalRowTop + 6,
-        { align: "right", width: 60 }
+        { align: "right", width: 57 }
       );
 
       doc.moveDown(3);
@@ -928,7 +937,7 @@ export class SalesService {
       });
 
       return { buffer, filename };
-    } catch (error) {
+    } catch (error: any) {
       this.loggerService.error({
         message: "Error generating receipt",
         context: "SalesService",
@@ -985,7 +994,7 @@ export class SalesService {
         recipientEmail,
         success: true,
       });
-    } catch (error) {
+    } catch (error: any) {
       this.loggerService.error({
         message: "Error emailing receipt",
         context: "SalesService",

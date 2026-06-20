@@ -4,7 +4,7 @@ import {
 } from "../../common/enums/stores.enum";
 import { BaseInterface } from "../../common/base.interface";
 import { PRODUCT_TYPE_ENUM } from "../../common/enums/products.enum";
-import { PAYMENT_METHOD_ENUM, FINANCE_PROVIDER_ENUM } from "../../common/enums";
+import { PAYMENT_METHOD_ENUM, FINANCE_PROVIDER_ENUM, type SALE_STATUS_ENUM } from "../../common/enums";
 import { COLOR_ENUM } from "src/common/enums/specifications.enum";
 
 export interface ICustomerInfo {
@@ -18,6 +18,7 @@ export interface ICustomerInfo {
 }
 
 export interface ISale extends BaseInterface {
+  // Required fields
   variant_uid: string;
   product_name: string;
   name: string;
@@ -28,15 +29,17 @@ export interface ISale extends BaseInterface {
   cost_price: number;
   selling_price: number;
   profit_margin: number;
+  invoice_number: string;
+  status: SALE_STATUS_ENUM;
   customer: ICustomerInfo;
+  // Optional fields
   payment_method?: PAYMENT_METHOD_ENUM;
   finance_provider?: FINANCE_PROVIDER_ENUM;
-  emi_duration?: number; // in months
-  receipt_number?: string;
+  emi_duration?: number;
   notes?: string;
-  color?: COLOR_ENUM; // Color from variant
-  ram?: number; // RAM in GB from variant
-  storage?: number; // Storage in GB from variant
+  color?: COLOR_ENUM;
+  ram?: number;
+  storage?: number;
 }
 
 export interface ICreateSaleInputDto {

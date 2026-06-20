@@ -17,6 +17,7 @@ import { LoggerService } from "../common/logger/logger.service";
 import { CreateSaleInputDto } from "./dto/create-sale.dto";
 import { ExportSalesDto } from "./dto/export-sales.dto";
 import { SearchSalesDto } from "./dto/search-sales.dto";
+import { MESSAGES } from "../common/constants/messages.constants";
 
 @ApiTags("Sales")
 @Controller("sales")
@@ -30,8 +31,9 @@ export class SalesController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  createSale(@Body() createSaleInputDto: CreateSaleInputDto) {
-    return this.salesService.create(createSaleInputDto);
+  async createSale(@Body() createSaleInputDto: CreateSaleInputDto) {
+    const sale = await this.salesService.create(createSaleInputDto);
+    return { message: MESSAGES.SALE.CREATED, sale };
   }
 
   @Post("search")
@@ -91,7 +93,7 @@ export class SalesController {
       );
 
       return response;
-    } catch (error) {
+    } catch (error: any) {
       this.loggerService.error({
         message: "Error in exportSales endpoint",
         context: "SalesController",
@@ -140,7 +142,7 @@ export class SalesController {
       );
 
       res.end(buffer);
-    } catch (error) {
+    } catch (error: any) {
       this.loggerService.error({
         message: "Error in generateReceipt endpoint",
         context: "SalesController",
@@ -183,7 +185,7 @@ export class SalesController {
       );
 
       return response;
-    } catch (error) {
+    } catch (error: any) {
       this.loggerService.error({
         message: "Error in emailReceipt endpoint",
         context: "SalesController",
