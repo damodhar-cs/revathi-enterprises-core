@@ -185,27 +185,14 @@ export class DashboardService {
   }
 
   private async getInventoryStatus(): Promise<InventoryStatus> {
-    const MIN_STOCK_COUNT = 5;
-    const variantsResult = await this.variantsService.searchVariants({});
-    const variants = variantsResult.items;
-
-    const totalItems = variants.length;
-    const inStock = variants.filter((v) => v.quantity > MIN_STOCK_COUNT).length;
-    const lowStock = variants.filter(
-      (v) => v.quantity > 0 && v.quantity <= MIN_STOCK_COUNT
-    ).length;
-    const outOfStock = variants.filter((v) => v.quantity === 0).length;
-    const totalValue = variants.reduce(
-      (sum, v) => sum + v.cost_price * v.quantity,
-      0
-    );
+    const variantsResult = await this.variantsService.searchVariants({ limit: 1 });
 
     return {
-      totalItems,
-      inStock,
-      lowStock,
-      outOfStock,
-      totalValue,
+      totalItems: variantsResult.count,
+      inStock: 0,
+      lowStock: 0,
+      outOfStock: 0,
+      totalValue: 0,
     };
   }
 

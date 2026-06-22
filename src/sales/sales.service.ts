@@ -14,7 +14,12 @@ import { VariantsService } from "src/variants/variants.service";
 import { CMSApiService } from "src/common/contentstack/cms-api.service";
 import { CMSApiHelperService } from "src/common/contentstack/cms-api-helper.service";
 import { CONTENT_TYPES } from "src/common/constants/app.constants";
-import { SALE_STATUS_ENUM } from "src/common/enums";
+import {
+  FINANCE_PROVIDER_ENUM,
+  PAYMENT_METHOD_ENUM,
+  SALE_STATUS_ENUM,
+} from "src/common/enums";
+import { ISearchSalesInput } from "./dto/search-sales.dto";
 
 @Injectable()
 export class SalesService {
@@ -23,7 +28,7 @@ export class SalesService {
     private readonly variantsService: VariantsService,
     private readonly mailService: MailService,
     private readonly cmsApiService: CMSApiService,
-    private readonly cmsApiHelperService: CMSApiHelperService
+    private readonly cmsApiHelperService: CMSApiHelperService,
   ) {}
 
   private async getNextInvoiceNumber(): Promise<string> {
@@ -31,11 +36,14 @@ export class SalesService {
     const result = await this.cmsApiService.getAllEntries({
       url,
       limit: 1,
-      sort: 'created_at',
-      order: 'desc',
+      sort: "created_at",
+      order: "desc",
     });
-    const lastInvoiceNumber = parseInt(result.items?.[0]?.invoice_number ?? '0', 10);
-    return String(lastInvoiceNumber + 1).padStart(5, '0');
+    const lastInvoiceNumber = parseInt(
+      result.items?.[0]?.invoice_number ?? "0",
+      10,
+    );
+    return String(lastInvoiceNumber + 1).padStart(5, "0");
   }
 
   /**
@@ -86,8 +94,12 @@ export class SalesService {
         invoice_number,
         status: SALE_STATUS_ENUM.ACTIVE,
       };
+      console.log(
+        JSON.stringify(enrichedSaleData, null, 2),
+        "enrichedSaleData",
+      );
       const url = this.cmsApiHelperService.createOneEntryUrl(
-        CONTENT_TYPES.SALES
+        CONTENT_TYPES.SALES,
       );
       const inputPayload = {
         url,
@@ -100,7 +112,7 @@ export class SalesService {
       if (existingVariant?.quantity > 1) {
         const variantUpdationUrl = this.cmsApiHelperService.updateOneEntryUrl(
           CONTENT_TYPES.VARIANTS,
-          variant_uid
+          variant_uid,
         );
         const variantUpdationInput = {
           url: variantUpdationUrl,
@@ -114,7 +126,7 @@ export class SalesService {
       } else {
         const variantDeletionUrl = this.cmsApiHelperService.deleteOneEntryUrl(
           CONTENT_TYPES.VARIANTS,
-          variant_uid
+          variant_uid,
         );
         const variantDeletionInput = {
           url: variantDeletionUrl,
@@ -135,23 +147,20 @@ export class SalesService {
    * Find all sales with optional filtering
    */
   async searchSales(
-    filters: {
-      branch?: string;
-      brand?: string;
-      search?: string;
-      created_at?: { $gte: string; $lte: string };
-    } = {}
+    filters: ISearchSalesInput = {},
   ): Promise<OutputDto<SaleDocument>> {
     this.loggerService.logMethodEntry("SalesService", "searchSales", filters);
     const body: any = {};
     const query: any = {};
 
     try {
-      // Search by name (autocomplete)
-      if (filters?.search) {
-        query.name = {
-          $regex: filters.search,
-        };
+      // Search by name, IMEI, or invoice number
+      if (filters.search) {
+        query.$or = [
+          { name: { $regex: filters.search } },
+          { imei: { $regex: filters.search } },
+          { invoice_number: { $regex: filters.search } },
+        ];
       }
 
       // Branch filter
@@ -164,6 +173,11 @@ export class SalesService {
         query.brand = { $eq: filters.brand };
       }
 
+      // Payment method filter
+      if (filters.payment_method) {
+        query.payment_method = { $eq: filters.payment_method };
+      }
+
       // Date range filter
       if (filters.created_at) {
         query.created_at = filters.created_at;
@@ -172,9 +186,16 @@ export class SalesService {
       body.query = query;
 
       const url = this.cmsApiHelperService.getAllEntriesUrl(
-        CONTENT_TYPES.SALES
+        CONTENT_TYPES.SALES,
       );
-      const inputPayload = { url, body };
+      const inputPayload = {
+        url,
+        body,
+        skip: filters.skip,
+        limit: filters.limit,
+        sort: filters.sort || "created_at",
+        order: filters.order ?? -1,
+      };
       return await this.cmsApiService.getAllEntries(inputPayload);
     } catch (error: any) {
       this.loggerService.error({
@@ -198,7 +219,7 @@ export class SalesService {
     try {
       const url = this.cmsApiHelperService.getOneEntryUrl(
         CONTENT_TYPES.SALES,
-        uid
+        uid,
       );
       return await this.cmsApiService.getEntry({ url });
     } catch (error: any) {
@@ -218,7 +239,7 @@ export class SalesService {
       brand?: string;
       search?: string;
       created_at?: { $gte: string; $lte: string };
-    } = {}
+    } = {},
   ): Promise<{
     totalSales: number;
     totalRevenue: number;
@@ -231,11 +252,11 @@ export class SalesService {
       // Calculate manually from CMS data
       const totalRevenue = salesData.items.reduce(
         (sum, sale) => sum + (sale.selling_price || 0),
-        0
+        0,
       );
       const totalProfit = salesData.items.reduce(
         (sum, sale) => sum + (sale.profit_margin || 0),
-        0
+        0,
       );
 
       return { totalSales, totalRevenue, totalProfit };
@@ -254,7 +275,7 @@ export class SalesService {
       search?: string;
       created_at?: { $gte: string; $lte: string };
     } = {},
-    recipientEmail: string
+    recipientEmail: string,
   ): Promise<void> {
     this.loggerService.logMethodEntry("SalesService", "exportSalesToExcel", {
       recipientEmail,
@@ -416,8 +437,14 @@ export class SalesService {
       const summaryStartRow = worksheet.lastRow.number + 3;
       const statistics = {
         totalSales: salesData.count,
-        totalRevenue: salesData.items.reduce((sum, sale) => sum + (sale.selling_price || 0), 0),
-        totalProfit: salesData.items.reduce((sum, sale) => sum + (sale.profit_margin || 0), 0),
+        totalRevenue: salesData.items.reduce(
+          (sum, sale) => sum + (sale.selling_price || 0),
+          0,
+        ),
+        totalProfit: salesData.items.reduce(
+          (sum, sale) => sum + (sale.profit_margin || 0),
+          0,
+        ),
       };
 
       worksheet.getCell(`A${summaryStartRow}`).value = "Summary";
@@ -463,7 +490,7 @@ export class SalesService {
           totalRecords: salesData.count,
           filters: filterText || "No filters applied",
           exportDate: new Date().toLocaleString("en-IN"),
-        }
+        },
       );
 
       this.loggerService.logMethodExit("SalesService", "exportSalesToExcel", {
@@ -491,7 +518,7 @@ export class SalesService {
   }
 
   async generateReceipt(
-    saleUid: string
+    saleUid: string,
   ): Promise<{ buffer: Buffer; filename: string }> {
     this.loggerService.logMethodEntry("SalesService", "generateReceipt", {
       saleUid,
@@ -613,13 +640,13 @@ export class SalesService {
         process.cwd(),
         "assets",
         "fonts",
-        "NotoSans-Regular.ttf"
+        "NotoSans-Regular.ttf",
       );
       const fontBold = path.join(
         process.cwd(),
         "assets",
         "fonts",
-        "NotoSans-Bold.ttf"
+        "NotoSans-Bold.ttf",
       );
       if (fs.existsSync(fontRegular) && fs.existsSync(fontBold)) {
         doc.registerFont("NotoSans", fontRegular);
@@ -683,6 +710,9 @@ export class SalesService {
 
       // --- BILL TO & INVOICE DETAILS SECTION ---
       const billToY = doc.y;
+      const isTvsCredit =
+        sale.payment_method === PAYMENT_METHOD_ENUM.FINANCE &&
+        sale.finance_provider === FINANCE_PROVIDER_ENUM.TVS_CREDIT;
 
       // Left side - Bill To
       doc.fontSize(10).font("NotoSans-Bold").text("Bill To", 50, billToY);
@@ -690,10 +720,22 @@ export class SalesService {
         .fontSize(11)
         .font("NotoSans-Bold")
         .text(sale.customer.name.toUpperCase(), 50, billToY + 18);
-      doc
-        .fontSize(9)
-        .font("NotoSans")
-        .text(`Contact No.: ${sale.customer.phone}`, 50, billToY + 35);
+
+      if (isTvsCredit) {
+        doc
+          .fontSize(9)
+          .font("NotoSans")
+          .text("at the below address only.", 50, billToY + 35);
+        doc
+          .fontSize(9)
+          .font("NotoSans-Bold")
+          .text(`Mobile Number: ${sale.customer.phone}`, 50, billToY + 50);
+      } else {
+        doc
+          .fontSize(9)
+          .font("NotoSans")
+          .text(`Contact No.: ${sale.customer.phone}`, 50, billToY + 35);
+      }
 
       // Right side - Invoice Details
       doc
@@ -710,21 +752,43 @@ export class SalesService {
           `Date: ${new Date(sale.created_at).toLocaleDateString("en-GB")}`,
           350,
           billToY + 31,
-          { align: "right" }
+          { align: "right" },
         )
         .text(
           `Time: ${new Date(sale.created_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}`,
           350,
           billToY + 44,
-          { align: "right" }
+          { align: "right" },
         );
 
-      doc.moveDown(4);
+      // For TVS Credit: render full address last so doc.y reflects the total section height
+      if (isTvsCredit) {
+        const fullAddress = [
+          sale.customer.address,
+          sale.customer.city,
+          sale.customer.state,
+          sale.customer.pincode,
+        ]
+          .filter(Boolean)
+          .join(", ");
+
+        doc
+          .fontSize(9)
+          .font("NotoSans-Bold")
+          .text("Customer Address:", 50, billToY + 65);
+        doc
+          .fontSize(9)
+          .font("NotoSans")
+          .text(fullAddress, 50, billToY + 78, { width: 280 });
+        doc.moveDown(1.5);
+      } else {
+        doc.moveDown(4);
+      }
 
       // --- TABLE SECTION ---
       const tableTop = doc.y + 10;
-      const col1X = 50;  // #
-      const col2X = 70;  // Item name (wider — HSN/SAC column removed)
+      const col1X = 50; // #
+      const col2X = 70; // Item name (wider — HSN/SAC column removed)
       const col3X = 315; // Quantity
       const col4X = 360; // Price/unit
       const col5X = 425; // GST
@@ -745,13 +809,21 @@ export class SalesService {
       const rowTop = tableTop + 25;
       doc.fillColor("#000000").fontSize(8).font("NotoSans");
 
-      const productTitle = (sale.name || sale.product_name || "Product").toUpperCase();
+      const productTitle = (
+        sale.name ||
+        sale.product_name ||
+        "Product"
+      ).toUpperCase();
       const specsLine = [
         sale.imei ? `IMEI: ${sale.imei}` : null,
         sale.ram ? `${sale.ram}GB RAM` : null,
         sale.storage ? `${sale.storage}GB Storage` : null,
-      ].filter(Boolean).join(" | ");
-      const itemName = specsLine ? `${productTitle}\n${specsLine}` : productTitle;
+      ]
+        .filter(Boolean)
+        .join(" | ");
+      const itemName = specsLine
+        ? `${productTitle}\n${specsLine}`
+        : productTitle;
 
       doc.text("1", col1X + 5, rowTop);
       doc.text(itemName, col2X + 5, rowTop, { width: 238 });
@@ -762,7 +834,7 @@ export class SalesService {
         `${rupeeSymbol} ${sellingPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         col6X + 5,
         rowTop,
-        { align: "right", width: 57 }
+        { align: "right", width: 57 },
       );
 
       // Total Row — extra gap to accommodate 2-line item name
@@ -774,13 +846,13 @@ export class SalesService {
       doc.text(
         `${rupeeSymbol} ${totalGST.toFixed(2)}`,
         col5X + 5,
-        totalRowTop + 6
+        totalRowTop + 6,
       );
       doc.text(
         `${rupeeSymbol} ${sellingPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         col6X + 5,
         totalRowTop + 6,
-        { align: "right", width: 57 }
+        { align: "right", width: 57 },
       );
 
       doc.moveDown(3);
@@ -862,7 +934,7 @@ export class SalesService {
         `${rupeeSymbol} ${sellingPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         470,
         bottomY + 58,
-        { align: "right", width: 80 }
+        { align: "right", width: 80 },
       );
 
       doc.fillColor("#000000").fontSize(9).font("NotoSans");
@@ -871,7 +943,7 @@ export class SalesService {
         `${rupeeSymbol} ${sellingPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         470,
         bottomY + 78,
-        { align: "right", width: 80 }
+        { align: "right", width: 80 },
       );
 
       doc.text("Balance", 350, bottomY + 96, { align: "left", width: 100 });

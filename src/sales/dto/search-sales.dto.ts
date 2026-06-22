@@ -1,6 +1,18 @@
 import { IsOptional, IsString, IsObject } from "class-validator";
 
-export class SearchSalesDto {
+export interface ISearchSalesInput {
+  search?: string;
+  brand?: string;
+  branch?: string;
+  payment_method?: string;
+  created_at?: { $gte: string; $lte: string };
+  skip?: number;
+  limit?: number;
+  order?: number;
+  sort?: string;
+}
+
+export class SearchSalesDto implements ISearchSalesInput {
   @IsOptional()
   @IsString()
   search?: string;
@@ -12,6 +24,10 @@ export class SearchSalesDto {
   @IsOptional()
   @IsString()
   branch?: string;
+
+  @IsOptional()
+  @IsString()
+  payment_method?: string;
 
   @IsOptional()
   @IsObject()
